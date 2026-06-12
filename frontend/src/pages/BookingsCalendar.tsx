@@ -104,7 +104,7 @@ export const BookingsCalendar: React.FC = () => {
   // Building filter states
   const [buildings, setBuildings] = useState<any[]>([]);
   const [selectedBuilding, setSelectedBuilding] = useState<string>(() => {
-    return sessionStorage.getItem('calendarSelectedBuilding') || 'All';
+    return sessionStorage.getItem('calendarSelectedBuilding') || '';
   });
 
   // Derived calendar settings
@@ -126,9 +126,9 @@ export const BookingsCalendar: React.FC = () => {
   }
 
   const sortedRooms = [...rooms].sort((a, b) => a.building.localeCompare(b.building));
-  const filteredRooms = selectedBuilding === 'All'
-    ? sortedRooms
-    : sortedRooms.filter(r => r.building === selectedBuilding);
+  const filteredRooms = selectedBuilding
+    ? sortedRooms.filter(r => r.building === selectedBuilding)
+    : [];
 
   useEffect(() => {
     fetchBaseData();
@@ -140,8 +140,22 @@ export const BookingsCalendar: React.FC = () => {
 
   // Save selectedBuilding to sessionStorage
   useEffect(() => {
-    sessionStorage.setItem('calendarSelectedBuilding', selectedBuilding);
+    if (selectedBuilding) {
+      sessionStorage.setItem('calendarSelectedBuilding', selectedBuilding);
+    }
   }, [selectedBuilding]);
+
+  // Default selected building to the first building in the list if not set or invalid
+  useEffect(() => {
+    if (buildings.length > 0) {
+      const saved = sessionStorage.getItem('calendarSelectedBuilding');
+      const exists = buildings.some(b => b.name === saved);
+      if (!saved || !exists || saved === 'All') {
+        setSelectedBuilding(buildings[0].name);
+        sessionStorage.setItem('calendarSelectedBuilding', buildings[0].name);
+      }
+    }
+  }, [buildings]);
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -641,28 +655,29 @@ export const BookingsCalendar: React.FC = () => {
             </button>
           </div>
 
-          <div className="flex items-center gap-2 border-l pl-4 dark:border-slate-800">
-            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-outfit">Building:</span>
-            <select
-              value={selectedBuilding}
-              onChange={e => {
-                const b = e.target.value;
-                setSelectedBuilding(b);
-                const matchingRooms = rooms.filter(r => b === 'All' || r.building === b);
-                if (matchingRooms.length > 0) {
-                  setBookingRoomId(matchingRooms[0].id);
-                }
-              }}
-              className={`rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
-                theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'
-              }`}
-            >
-              <option value="All">All Buildings</option>
-              {buildings.map(b => (
-                <option key={b.id} value={b.name}>{b.name}</option>
-              ))}
-            </select>
-          </div>
+          {buildings.length > 0 && (
+            <div className="flex items-center gap-2 border-l pl-4 dark:border-slate-800">
+              <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-outfit">Building:</span>
+              <select
+                value={selectedBuilding}
+                onChange={e => {
+                  const b = e.target.value;
+                  setSelectedBuilding(b);
+                  const matchingRooms = rooms.filter(r => r.building === b);
+                  if (matchingRooms.length > 0) {
+                    setBookingRoomId(matchingRooms[0].id);
+                  }
+                }}
+                className={`rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                  theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'
+                }`}
+              >
+                {buildings.map(b => (
+                  <option key={b.id} value={b.name}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         <button
@@ -909,7 +924,7 @@ export const BookingsCalendar: React.FC = () => {
                       theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
                     } ${isRoomLocked ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
                   >
-                    {filteredRooms.map(r => (
+                    {sortedRooms.map(r => (
                       <option key={r.id} value={r.id}>{r.name} ({r.building})</option>
                     ))}
                   </select>
@@ -1123,7 +1138,7 @@ export const BookingsCalendar: React.FC = () => {
                         theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
                       }`}
                     >
-                      {filteredRooms.map(r => (
+                      {sortedRooms.map(r => (
                         <option key={r.id} value={r.id}>{r.name} ({r.building})</option>
                       ))}
                     </select>
