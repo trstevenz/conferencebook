@@ -53,9 +53,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     { name: 'Team Bookings', icon: Shield, path: '/team-bookings', roles: ['MANAGER', 'SUPER_ADMIN'] },
     { name: 'Room Directory', icon: Settings, path: '/rooms', roles: ['FACILITY_ADMIN', 'SUPER_ADMIN'] },
     { name: 'Maintenance Logs', icon: Hammer, path: '/maintenance', roles: ['FACILITY_ADMIN', 'SUPER_ADMIN'] },
-    { name: 'AI Summarizer', icon: FileText, path: '/summarizer', roles: ['EMPLOYEE', 'MANAGER', 'FACILITY_ADMIN', 'SUPER_ADMIN'] },
     { name: 'Reports & Analytics', icon: BarChart3, path: '/analytics', roles: ['EMPLOYEE', 'MANAGER', 'FACILITY_ADMIN', 'SUPER_ADMIN'] },
-    { name: 'QR Check-In', icon: QrCode, path: '/qr-checkin', roles: ['EMPLOYEE', 'MANAGER', 'FACILITY_ADMIN', 'SUPER_ADMIN'] },
     { name: 'User Management', icon: User, path: '/super-admin', roles: ['SUPER_ADMIN'] },
   ];
 
@@ -111,10 +109,8 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         text: `🎉 Success! I have successfully booked **${proposal.proposedRoom.name}** for you starting on ${new Date(proposal.proposedStartTime).toLocaleString()}.`
       }]);
       
-      // refresh parent window if on calendar
-      if (location.pathname === '/' || location.pathname === '/calendar') {
-        window.location.reload();
-      }
+      // dispatch booking-updated custom event to trigger silent refresh
+      window.dispatchEvent(new CustomEvent('booking-updated'));
     } catch (err: any) {
       setChatHistory(prev => [...prev, { sender: 'ai', text: 'Booking failed: ' + err.message }]);
     } finally {
@@ -166,12 +162,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             })}
         </nav>
 
-        <div className="p-4 border-t border-inherit">
-          <button onClick={logout} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all">
-            <LogOut className="h-5 w-5 flex-shrink-0" />
-            {isSidebarOpen && <span>Sign Out</span>}
-          </button>
-        </div>
+        {/* Sign Out has been moved to the top-right header */}
       </aside>
 
       {/* Main Content Area */}
@@ -253,6 +244,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </span>
               </div>
             </div>
+
+            {/* Logout button placed top right next to profile */}
+            <button
+              onClick={logout}
+              className="p-2 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-all flex items-center justify-center gap-1.5"
+              title="Sign Out"
+            >
+              <LogOut className="h-5 w-5" />
+            </button>
           </div>
         </header>
 

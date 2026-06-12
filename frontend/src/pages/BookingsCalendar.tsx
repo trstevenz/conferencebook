@@ -153,6 +153,37 @@ export const BookingsCalendar: React.FC = () => {
     sessionStorage.setItem('calendarSelectedDate', selectedDate.toISOString());
   }, [selectedDate]);
 
+  // Listen for custom booking-updated events from AI Assistant and other components
+  useEffect(() => {
+    const handleBookingUpdated = () => {
+      fetchBookings(true);
+    };
+    window.addEventListener('booking-updated', handleBookingUpdated);
+    return () => {
+      window.removeEventListener('booking-updated', handleBookingUpdated);
+    };
+  }, []);
+
+  // Poll for realtime updates in the background every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        fetchBookings(true);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Synchronize the currently open details modal if the booking updates in real-time
+  useEffect(() => {
+    if (selectedBooking) {
+      const updated = bookings.find(b => b.id === selectedBooking.id);
+      if (updated) {
+        setSelectedBooking(updated);
+      }
+    }
+  }, [bookings]);
+
   // Restore modal states once data is loaded
   useEffect(() => {
     if (rooms.length === 0 || bookings.length === 0 || hasRestoredModal) return;
@@ -262,15 +293,19 @@ export const BookingsCalendar: React.FC = () => {
     }
   };
 
-  const fetchBookings = async () => {
+  const fetchBookings = async (silent = false) => {
     try {
-      setIsLoading(true);
+      if (!silent) {
+        setIsLoading(true);
+      }
       const bookingsData = await apiCall('/api/bookings');
       setBookings(bookingsData);
     } catch (err: any) {
       console.error('Error fetching bookings:', err);
     } finally {
-      setIsLoading(false);
+      if (!silent) {
+        setIsLoading(false);
+      }
     }
   };
 

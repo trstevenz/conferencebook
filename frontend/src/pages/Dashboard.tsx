@@ -101,7 +101,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* Welcome Banner */}
-      <div className="p-8 rounded-3xl bg-gradient-to-tr from-primary-600 via-primary-600 to-blue-800 text-white relative overflow-hidden shadow-xl shadow-primary-500/10">
+      <div className="p-8 rounded-3xl bg-[#0b1329] text-white relative overflow-hidden shadow-xl shadow-primary-500/10">
         <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-white/5 translate-x-10 -translate-y-10" />
         <div className="absolute bottom-0 left-1/3 h-28 w-28 rounded-full bg-white/5 -translate-x-10 translate-y-10" />
 
@@ -119,12 +119,6 @@ export const Dashboard: React.FC = () => {
               className="px-5 py-2.5 bg-white text-primary-600 rounded-2xl text-xs font-semibold hover:bg-slate-50 transition-all flex items-center gap-1.5 shadow-md"
             >
               <Calendar className="h-4 w-4" /> Book Room Now
-            </button>
-            <button
-              onClick={() => navigate('/qr-checkin')}
-              className="px-5 py-2.5 bg-white/15 text-white rounded-2xl text-xs font-semibold hover:bg-white/20 transition-all flex items-center gap-1.5"
-            >
-              <Video className="h-4 w-4" /> Scan QR Check-In
             </button>
           </div>
         </div>

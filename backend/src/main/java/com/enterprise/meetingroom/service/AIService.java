@@ -67,18 +67,23 @@ public class AIService {
         String lowercaseMsg = message.toLowerCase();
         
         AIResponse response;
-        if (lowercaseMsg.contains("free now") || lowercaseMsg.contains("rooms free") || lowercaseMsg.contains("what rooms are free")) {
-            response = handleFreeRoomsNow();
-        } else if (lowercaseMsg.contains("my meetings") || lowercaseMsg.contains("show my bookings") || lowercaseMsg.contains("what are my meetings")) {
-            response = handleShowUserMeetings(user);
-        } else if (lowercaseMsg.contains("book") || lowercaseMsg.contains("need") || lowercaseMsg.contains("reserve")) {
-            response = handleRoomSearchAndBook(lowercaseMsg);
+        if (lowercaseMsg.contains("free now") || lowercaseMsg.contains("rooms free") || lowercaseMsg.contains("what rooms are free") ||
+            lowercaseMsg.contains("book") || lowercaseMsg.contains("need") || lowercaseMsg.contains("reserve") || 
+            lowercaseMsg.contains("find") || lowercaseMsg.contains("available")) {
+            if (lowercaseMsg.contains("free now") || lowercaseMsg.contains("rooms free") || lowercaseMsg.contains("what rooms are free")) {
+                response = handleFreeRoomsNow();
+            } else {
+                response = handleRoomSearchAndBook(lowercaseMsg);
+            }
+        } else if (lowercaseMsg.contains("how") || lowercaseMsg.contains("help") || lowercaseMsg.contains("guide") || 
+                   lowercaseMsg.contains("instruction") || lowercaseMsg.contains("question") || lowercaseMsg.contains("doubt")) {
+            String helpText = "To book a room, you can:\n" +
+                    "1. Navigate to the **Bookings Calendar** page, select a date, and drag across empty time slots in a room's row (or click the **+ Book Room** button) to open the booking modal.\n" +
+                    "2. Or, tell me what you need directly in this chat (e.g., *\"Book a room for 5 people tomorrow at 3 PM\"*), and I will propose an available room and assist you in completing the reservation.";
+            response = new AIResponse(helpText, "CLARIFY_BOOKING");
         } else {
-            response = new AIResponse("Hello! I am your AI Booking Assistant. You can ask me things like:\n" +
-                    "- *\"What rooms are free now?\"*\n" +
-                    "- *\"I need a room for 10 people tomorrow at 3 PM\"*\n" +
-                    "- *\"Show my meetings this week\"*\n" +
-                    "- *\"Find a room with a Projector tomorrow 2 PM\"*", "GENERAL_CHAT");
+            String restrictedText = "I am your AI Booking Assistant. I am restricted to only helping you find and book conference rooms, or clarifying how to use the booking system. Please ask me about room availability or how to book a room.";
+            response = new AIResponse(restrictedText, "RESTRICTED");
         }
 
         // Log interaction

@@ -8,8 +8,6 @@ import { BookingsCalendar } from './pages/BookingsCalendar';
 import { TeamBookings } from './pages/TeamBookings';
 import { RoomManagement } from './pages/RoomManagement';
 import { MaintenanceScheduler } from './pages/MaintenanceScheduler';
-import { MeetingSummaryGenerator } from './pages/MeetingSummaryGenerator';
-import { QRCheckIn } from './pages/QRCheckIn';
 import { SuperAdminPortal } from './pages/SuperAdminPortal';
 import { Analytics } from './pages/Analytics';
 
@@ -33,9 +31,7 @@ const AuthenticatedApp: React.FC = () => {
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/calendar" element={<BookingsCalendar />} />
-        <Route path="/summarizer" element={<MeetingSummaryGenerator />} />
         <Route path="/analytics" element={<Analytics />} />
-        <Route path="/qr-checkin" element={<QRCheckIn />} />
         
         {/* Manager & Admin */}
         <Route path="/team-bookings" element={
