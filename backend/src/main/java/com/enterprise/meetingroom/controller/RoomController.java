@@ -102,6 +102,9 @@ public class RoomController {
         room.setDescription(roomDetails.getDescription());
         room.setStatus(roomDetails.getStatus());
         room.setAmenities(roomDetails.getAmenities());
+        room.setAvailableStartHour(roomDetails.getAvailableStartHour());
+        room.setAvailableEndHour(roomDetails.getAvailableEndHour());
+        room.setMaxDuration(roomDetails.getMaxDuration());
 
         Room saved = roomRepository.save(room);
         auditLogService.log(principal.getId(), principal.getUsername(), "UPDATE_ROOM", request.getRemoteAddr(), 

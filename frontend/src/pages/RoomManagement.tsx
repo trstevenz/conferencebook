@@ -13,6 +13,9 @@ interface Room {
   status: string;
   amenities: string;
   amenitiesList: string[];
+  availableStartHour?: number;
+  availableEndHour?: number;
+  maxDuration?: number;
 }
 
 export const RoomManagement: React.FC = () => {
@@ -34,6 +37,9 @@ export const RoomManagement: React.FC = () => {
   const [capacity, setCapacity] = useState<number>(5);
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('AVAILABLE');
+  const [availableStartHour, setAvailableStartHour] = useState<number>(8);
+  const [availableEndHour, setAvailableEndHour] = useState<number>(18);
+  const [maxDuration, setMaxDuration] = useState<number>(120);
   
   // Amenities checklist
   const availableAmenities = [
@@ -74,6 +80,9 @@ export const RoomManagement: React.FC = () => {
     setDescription('');
     setStatus('AVAILABLE');
     setSelectedAmenities([]);
+    setAvailableStartHour(8);
+    setAvailableEndHour(18);
+    setMaxDuration(120);
     setIsModalOpen(true);
   };
 
@@ -89,6 +98,9 @@ export const RoomManagement: React.FC = () => {
     setDescription(room.description);
     setStatus(room.status);
     setSelectedAmenities(room.amenitiesList);
+    setAvailableStartHour(room.availableStartHour ?? 8);
+    setAvailableEndHour(room.availableEndHour ?? 18);
+    setMaxDuration(room.maxDuration ?? 120);
     setIsModalOpen(true);
   };
 
@@ -112,7 +124,10 @@ export const RoomManagement: React.FC = () => {
       capacity: capacity || 10,
       description,
       status,
-      amenities: selectedAmenities.join(',')
+      amenities: selectedAmenities.join(','),
+      availableStartHour,
+      availableEndHour,
+      maxDuration
     };
 
     try {
@@ -336,6 +351,61 @@ export const RoomManagement: React.FC = () => {
                     theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
                   }`}
                 />
+              </div>
+
+              {/* Room Scheduling & Availability bounds */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Available Hours</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <select
+                      value={availableStartHour}
+                      onChange={e => setAvailableStartHour(Number(e.target.value))}
+                      className={`rounded-2xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                        theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      {Array.from({ length: 24 }).map((_, h) => {
+                        const ampm = h >= 12 ? 'PM' : 'AM';
+                        const displayHour = h % 12 === 0 ? 12 : h % 12;
+                        return <option key={h} value={h}>{displayHour}:00 {ampm}</option>;
+                      })}
+                    </select>
+                    <select
+                      value={availableEndHour}
+                      onChange={e => setAvailableEndHour(Number(e.target.value))}
+                      className={`rounded-2xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                        theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      {Array.from({ length: 24 }).map((_, h) => {
+                        const ampm = h >= 12 ? 'PM' : 'AM';
+                        const displayHour = h % 12 === 0 ? 12 : h % 12;
+                        return <option key={h} value={h}>{displayHour}:00 {ampm}</option>;
+                      })}
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Max Booking Duration</label>
+                  <select
+                    value={maxDuration}
+                    onChange={e => setMaxDuration(Number(e.target.value))}
+                    className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                      theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                    }`}
+                  >
+                    <option value={30}>30 Minutes</option>
+                    <option value={60}>60 Minutes (1 Hour)</option>
+                    <option value={90}>90 Minutes (1.5 Hours)</option>
+                    <option value={120}>120 Minutes (2 Hours)</option>
+                    <option value={180}>180 Minutes (3 Hours)</option>
+                    <option value={240}>240 Minutes (4 Hours)</option>
+                    <option value={480}>480 Minutes (8 Hours)</option>
+                    <option value={1440}>No Limit (1 Day)</option>
+                  </select>
+                </div>
               </div>
 
               {/* Status & Amenities Selection */}

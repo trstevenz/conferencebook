@@ -37,6 +37,10 @@ public class Room {
     @Column(length = 1000)
     private String amenities; // comma-separated strings: e.g., "Projector,Whiteboard,Air Conditioning"
 
+    private Integer availableStartHour;
+    private Integer availableEndHour;
+    private Integer maxDuration;
+
     public Room() {}
 
     public Room(String name, String code, Integer floor, String building, Integer capacity, String description, RoomStatus status, String amenities) {
@@ -137,5 +141,29 @@ public class Room {
         } else {
             this.amenities = String.join(",", list);
         }
+    }
+
+    public Integer getAvailableStartHour() {
+        return availableStartHour != null ? availableStartHour : 8;
+    }
+
+    public void setAvailableStartHour(Integer availableStartHour) {
+        this.availableStartHour = availableStartHour;
+    }
+
+    public Integer getAvailableEndHour() {
+        return availableEndHour != null ? availableEndHour : 18;
+    }
+
+    public void setAvailableEndHour(Integer availableEndHour) {
+        this.availableEndHour = availableEndHour;
+    }
+
+    public Integer getMaxDuration() {
+        return maxDuration != null ? maxDuration : 120;
+    }
+
+    public void setMaxDuration(Integer maxDuration) {
+        this.maxDuration = maxDuration;
     }
 }
