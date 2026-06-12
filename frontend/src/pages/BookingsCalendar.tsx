@@ -101,6 +101,12 @@ export const BookingsCalendar: React.FC = () => {
   const [dragEndSlot, setDragEndSlot] = useState<number | null>(null);
   const [dragRoomId, setDragRoomId] = useState<number | null>(null);
 
+  // Building filter states
+  const [buildings, setBuildings] = useState<any[]>([]);
+  const [selectedBuilding, setSelectedBuilding] = useState<string>(() => {
+    return sessionStorage.getItem('calendarSelectedBuilding') || 'All';
+  });
+
   // Derived calendar settings
   const gridStartHour = rooms.length > 0
     ? Math.min(...rooms.map(r => r.availableStartHour ?? 8))
@@ -119,6 +125,11 @@ export const BookingsCalendar: React.FC = () => {
     businessHours.push(h);
   }
 
+  const sortedRooms = [...rooms].sort((a, b) => a.building.localeCompare(b.building));
+  const filteredRooms = selectedBuilding === 'All'
+    ? sortedRooms
+    : sortedRooms.filter(r => r.building === selectedBuilding);
+
   useEffect(() => {
     fetchBaseData();
   }, []);
@@ -126,6 +137,11 @@ export const BookingsCalendar: React.FC = () => {
   useEffect(() => {
     fetchBookings();
   }, [selectedDate]);
+
+  // Save selectedBuilding to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('calendarSelectedBuilding', selectedBuilding);
+  }, [selectedBuilding]);
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
@@ -290,6 +306,14 @@ export const BookingsCalendar: React.FC = () => {
 
       const usersData = await apiCall('/api/auth/users');
       setUsersList(usersData.filter((u: any) => u.id !== user?.id)); // exclude self
+
+      try {
+        const buildingsData = await apiCall('/api/buildings');
+        setBuildings(buildingsData);
+      } catch (bErr) {
+        console.error('Error fetching buildings:', bErr);
+      }
+
       setIsRoomsLoaded(true);
     } catch (err: any) {
       console.error('Error fetching base details:', err);
@@ -397,13 +421,13 @@ export const BookingsCalendar: React.FC = () => {
     setBookingRecurrence('');
     setBookingRecurrenceCount(1);
 
-    const activeRoomId = roomId || (rooms.length > 0 ? rooms[0].id : 0);
+    const activeRoomId = roomId || (filteredRooms.length > 0 ? filteredRooms[0].id : 0);
 
     if (roomId) {
       setBookingRoomId(roomId);
       setIsRoomLocked(true);
     } else {
-      if (rooms.length > 0) setBookingRoomId(rooms[0].id);
+      if (filteredRooms.length > 0) setBookingRoomId(filteredRooms[0].id);
       setIsRoomLocked(false);
     }
 
@@ -601,19 +625,44 @@ export const BookingsCalendar: React.FC = () => {
     <div className="space-y-6 animate-fadeIn">
       {/* Date Header Controller */}
       <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm">
-        <div className="flex items-center gap-3">
-          <button onClick={handlePrevDay} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="h-5 w-5 text-primary-600" />
-            <span className="font-bold text-lg font-outfit">
-              {selectedDate.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            </span>
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-3">
+            <button onClick={handlePrevDay} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="h-5 w-5 text-primary-600" />
+              <span className="font-bold text-lg font-outfit">
+                {selectedDate.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </span>
+            </div>
+            <button onClick={handleNextDay} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+              <ChevronRight className="h-5 w-5" />
+            </button>
           </div>
-          <button onClick={handleNextDay} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
-            <ChevronRight className="h-5 w-5" />
-          </button>
+
+          <div className="flex items-center gap-2 border-l pl-4 dark:border-slate-800">
+            <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 font-outfit">Building:</span>
+            <select
+              value={selectedBuilding}
+              onChange={e => {
+                const b = e.target.value;
+                setSelectedBuilding(b);
+                const matchingRooms = rooms.filter(r => b === 'All' || r.building === b);
+                if (matchingRooms.length > 0) {
+                  setBookingRoomId(matchingRooms[0].id);
+                }
+              }}
+              className={`rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'
+              }`}
+            >
+              <option value="All">All Buildings</option>
+              {buildings.map(b => (
+                <option key={b.id} value={b.name}>{b.name}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <button
@@ -656,10 +705,10 @@ export const BookingsCalendar: React.FC = () => {
               <div className="flex items-center justify-center py-20">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
               </div>
-            ) : rooms.length === 0 ? (
+            ) : filteredRooms.length === 0 ? (
               <div className="p-10 text-center text-slate-500 text-sm">No rooms found.</div>
             ) : (
-              rooms.map(room => {
+              filteredRooms.map(room => {
                 const roomBookings = bookings.filter(b => 
                   b.room.id === room.id && 
                   b.status !== 'CANCELLED' && 
@@ -860,8 +909,8 @@ export const BookingsCalendar: React.FC = () => {
                       theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
                     } ${isRoomLocked ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
                   >
-                    {rooms.map(r => (
-                      <option key={r.id} value={r.id}>{r.name}</option>
+                    {filteredRooms.map(r => (
+                      <option key={r.id} value={r.id}>{r.name} ({r.building})</option>
                     ))}
                   </select>
                 </div>
@@ -1074,8 +1123,8 @@ export const BookingsCalendar: React.FC = () => {
                         theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
                       }`}
                     >
-                      {rooms.map(r => (
-                        <option key={r.id} value={r.id}>{r.name}</option>
+                      {filteredRooms.map(r => (
+                        <option key={r.id} value={r.id}>{r.name} ({r.building})</option>
                       ))}
                     </select>
                   </div>

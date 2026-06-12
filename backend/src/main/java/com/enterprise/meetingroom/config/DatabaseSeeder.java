@@ -21,6 +21,9 @@ public class DatabaseSeeder implements CommandLineRunner {
     private RoomRepository roomRepository;
 
     @Autowired
+    private BuildingRepository buildingRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Override
@@ -31,6 +34,10 @@ public class DatabaseSeeder implements CommandLineRunner {
             Department mkt = departmentRepository.save(new Department("Marketing"));
             Department hr = departmentRepository.save(new Department("Human Resources"));
             Department fin = departmentRepository.save(new Department("Finance"));
+
+            // Seed Buildings
+            buildingRepository.save(new Building("Building 1"));
+            buildingRepository.save(new Building("Building 2"));
 
             // Seed Users
             userRepository.save(new User("superadmin", passwordEncoder.encode("password123"), 

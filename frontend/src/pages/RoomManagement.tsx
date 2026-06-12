@@ -52,9 +52,59 @@ export const RoomManagement: React.FC = () => {
   ];
   const [selectedAmenities, setSelectedAmenities] = useState<string[]>([]);
 
+  // Building states
+  const [buildings, setBuildings] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<'rooms' | 'buildings'>('rooms');
+  const [newBuildingName, setNewBuildingName] = useState('');
+  const [isBuildingSaving, setIsBuildingSaving] = useState(false);
+
   useEffect(() => {
     fetchRooms();
+    fetchBuildings();
   }, []);
+
+  const fetchBuildings = async () => {
+    try {
+      const data = await apiCall('/api/buildings');
+      setBuildings(data);
+    } catch (err: any) {
+      setErrorMessage(err.message);
+    }
+  };
+
+  const handleAddBuilding = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBuildingName.trim()) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      setIsBuildingSaving(true);
+      await apiCall('/api/admin/buildings', {
+        method: 'POST',
+        body: JSON.stringify({ name: newBuildingName })
+      });
+      setNewBuildingName('');
+      setSuccessMessage('Building created successfully!');
+      fetchBuildings();
+    } catch (err: any) {
+      setErrorMessage(err.message);
+    } finally {
+      setIsBuildingSaving(false);
+    }
+  };
+
+  const handleDeleteBuilding = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this building? This won\'t delete rooms automatically but might cause filter gaps.')) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    try {
+      await apiCall(`/api/admin/buildings/${id}`, { method: 'DELETE' });
+      setSuccessMessage('Building deleted successfully!');
+      fetchBuildings();
+    } catch (err: any) {
+      setErrorMessage(err.message);
+    }
+  };
 
   const fetchRooms = async () => {
     try {
@@ -74,7 +124,7 @@ export const RoomManagement: React.FC = () => {
     setEditingRoomId(null);
     setName('');
     setCode('');
-    setBuilding('');
+    setBuilding(buildings.length > 0 ? buildings[0].name : '');
     setFloor(1);
     setCapacity(5);
     setDescription('');
@@ -211,103 +261,202 @@ export const RoomManagement: React.FC = () => {
         </div>
       )}
 
-      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm">
-        <div>
-          <h3 className="font-bold text-lg font-outfit">Office Rooms Directory</h3>
-          <p className="text-xs text-slate-400 mt-1">Configure and manage meeting assets in building locations.</p>
-        </div>
-
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200 dark:border-slate-800">
         <button
-          onClick={handleOpenCreate}
-          className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl text-xs font-semibold shadow-lg shadow-primary-500/25 flex items-center gap-1.5"
+          onClick={() => setActiveTab('rooms')}
+          className={`px-6 py-3 text-xs font-bold border-b-2 transition-all ${
+            activeTab === 'rooms'
+              ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+          }`}
         >
-          <Plus className="h-4 w-4" /> Add Room
+          Rooms Directory
+        </button>
+        <button
+          onClick={() => setActiveTab('buildings')}
+          className={`px-6 py-3 text-xs font-bold border-b-2 transition-all ${
+            activeTab === 'buildings'
+              ? 'border-primary-600 text-primary-600 dark:text-primary-400'
+              : 'border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'
+          }`}
+        >
+          Manage Buildings
         </button>
       </div>
 
-      {/* Rooms List Table */}
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+      {activeTab === 'rooms' ? (
+        <>
+          <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm">
+            <div>
+              <h3 className="font-bold text-lg font-outfit">Office Rooms Directory</h3>
+              <p className="text-xs text-slate-400 mt-1">Configure and manage meeting assets in building locations.</p>
             </div>
-          ) : (
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/40 border-b dark:border-slate-800 text-xs text-slate-400 font-semibold h-12">
-                  <th className="p-4 pl-6">Room Name</th>
-                  <th className="p-4">Location</th>
-                  <th className="p-4">Availability & Limits</th>
-                  <th className="p-4">Amenities</th>
-                  <th className="p-4">Status</th>
-                  <th className="p-4 pr-6 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y dark:divide-slate-800 text-sm">
-                {rooms.map(room => (
-                  <tr key={room.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                    {/* Name */}
-                    <td className="p-4 pl-6">
-                      <p className="font-bold">{room.name}</p>
-                    </td>
 
-                    {/* Location */}
-                    <td className="p-4 text-xs text-slate-500 dark:text-slate-400">
-                      {room.building} (Floor {room.floor})
-                    </td>
+            <button
+              onClick={handleOpenCreate}
+              className="px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl text-xs font-semibold shadow-lg shadow-primary-500/25 flex items-center gap-1.5"
+            >
+              <Plus className="h-4 w-4" /> Add Room
+            </button>
+          </div>
 
-                    {/* Availability & Limits */}
-                    <td className="p-4 text-xs text-slate-600 dark:text-slate-300">
-                      <div className="font-semibold">{formatHour(room.availableStartHour ?? 8)} - {formatHour(room.availableEndHour ?? 18)}</div>
-                      <div className="text-[10px] text-slate-400 mt-0.5">Max Limit: {formatDuration(room.maxDuration ?? 120)}</div>
-                    </td>
+          {/* Rooms List Table */}
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-20">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+                </div>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 dark:bg-slate-800/40 border-b dark:border-slate-800 text-xs text-slate-400 font-semibold h-12">
+                      <th className="p-4 pl-6">Room Name</th>
+                      <th className="p-4">Location</th>
+                      <th className="p-4">Availability & Limits</th>
+                      <th className="p-4">Amenities</th>
+                      <th className="p-4">Status</th>
+                      <th className="p-4 pr-6 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y dark:divide-slate-800 text-sm">
+                    {rooms.map(room => (
+                      <tr key={room.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                        {/* Name */}
+                        <td className="p-4 pl-6">
+                          <p className="font-bold">{room.name}</p>
+                        </td>
 
-                    {/* Amenities */}
-                    <td className="p-4 max-w-xs">
-                      <div className="flex flex-wrap gap-1">
-                        {room.amenitiesList.map(am => (
-                          <span
-                            key={am}
-                            className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 font-medium"
-                          >
-                            {am}
+                        {/* Location */}
+                        <td className="p-4 text-xs text-slate-500 dark:text-slate-400">
+                          {room.building} (Floor {room.floor})
+                        </td>
+
+                        {/* Availability & Limits */}
+                        <td className="p-4 text-xs text-slate-600 dark:text-slate-300">
+                          <div className="font-semibold">{formatHour(room.availableStartHour ?? 8)} - {formatHour(room.availableEndHour ?? 18)}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">Max Limit: {formatDuration(room.maxDuration ?? 120)}</div>
+                        </td>
+
+                        {/* Amenities */}
+                        <td className="p-4 max-w-xs">
+                          <div className="flex flex-wrap gap-1">
+                            {room.amenitiesList.map(am => (
+                              <span
+                                key={am}
+                                className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 font-medium"
+                              >
+                                {am}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+
+                        {/* Status */}
+                        <td className="p-4">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadgeColor(room.status)}`}>
+                            {room.status}
                           </span>
-                        ))}
-                      </div>
-                    </td>
+                        </td>
 
-                    {/* Status */}
-                    <td className="p-4">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${getStatusBadgeColor(room.status)}`}>
-                        {room.status}
-                      </span>
-                    </td>
+                        {/* Actions */}
+                        <td className="p-4 pr-6 text-right">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => handleOpenEdit(room)}
+                              className="p-2 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteRoom(room.id)}
+                              className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl p-6 shadow-sm space-y-4">
+            <div>
+              <h4 className="font-bold text-sm font-outfit mb-1">Add New Building</h4>
+              <p className="text-xs text-slate-400">Create a new building structure under which meeting rooms can be added.</p>
+            </div>
+            <form onSubmit={handleAddBuilding} className="flex gap-4">
+              <input
+                type="text"
+                required
+                value={newBuildingName}
+                onChange={e => setNewBuildingName(e.target.value)}
+                placeholder="E.g., Innovation Center"
+                className={`flex-1 rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                  theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                }`}
+              />
+              <button
+                type="submit"
+                disabled={isBuildingSaving}
+                className="px-6 py-3 bg-primary-600 hover:bg-primary-700 disabled:opacity-50 text-white rounded-2xl text-xs font-semibold shadow-lg shadow-primary-500/25 flex items-center gap-1.5"
+              >
+                {isBuildingSaving ? 'Saving...' : 'Add Building'}
+              </button>
+            </form>
+          </div>
 
-                    {/* Actions */}
-                    <td className="p-4 pr-6 text-right">
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => handleOpenEdit(room)}
-                          className="p-2 text-slate-400 hover:text-primary-600 dark:hover:text-primary-400 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteRoom(room.id)}
-                          className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800/40 border-b dark:border-slate-800 text-xs text-slate-400 font-semibold h-12">
+                    <th className="p-4 pl-6">Building Name</th>
+                    <th className="p-4">Rooms Count</th>
+                    <th className="p-4 pr-6 text-right">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
+                </thead>
+                <tbody className="divide-y dark:divide-slate-800 text-sm">
+                  {buildings.map(b => {
+                    const roomCount = rooms.filter(r => r.building === b.name).length;
+                    return (
+                      <tr key={b.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                        <td className="p-4 pl-6 font-bold">{b.name}</td>
+                        <td className="p-4 text-xs text-slate-500 dark:text-slate-400">
+                          {roomCount} {roomCount === 1 ? 'room' : 'rooms'}
+                        </td>
+                        <td className="p-4 pr-6 text-right">
+                          <button
+                            onClick={() => handleDeleteBuilding(b.id)}
+                            className="p-2 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1"
+                            title="Delete Building"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {buildings.length === 0 && (
+                    <tr>
+                      <td colSpan={3} className="p-8 text-center text-xs text-slate-400">
+                        No buildings registered yet.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* CREATE/EDIT MODAL */}
       {isModalOpen && (
@@ -337,16 +486,19 @@ export const RoomManagement: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Building</label>
-                  <input
-                    type="text"
+                  <select
                     required
                     value={building}
                     onChange={e => setBuilding(e.target.value)}
-                    placeholder="E.g., HQ Block"
                     className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
                       theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
                     }`}
-                  />
+                  >
+                    <option value="" disabled>Select a building</option>
+                    {buildings.map(b => (
+                      <option key={b.id} value={b.name}>{b.name}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Floor Number</label>
