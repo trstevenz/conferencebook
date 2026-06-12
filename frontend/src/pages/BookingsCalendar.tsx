@@ -592,11 +592,9 @@ export const BookingsCalendar: React.FC = () => {
             {/* Timeline Hours Header */}
             <div className="flex bg-slate-50 dark:bg-slate-800/40 text-slate-400 font-semibold text-xs h-12">
               <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex items-center font-outfit">Rooms</div>
-              <div className="flex-1" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))` }}>
-                {businessHours.slice(0, -1).map((h, idx, arr) => {
-                  const isLast = idx === arr.length - 1;
+              <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))` }}>
+                {businessHours.slice(0, -1).map((h) => {
                   const startHour = h;
-                  const endHour = h + 1;
                   const getLabel = (hour: number) => {
                     if (hour === 0 || hour === 24) return '12 AM';
                     if (hour === 12) return '12 PM';
@@ -605,14 +603,21 @@ export const BookingsCalendar: React.FC = () => {
                   return (
                     <div
                       key={h}
-                      className="flex items-center justify-between pl-1.5 pr-1.5 border-r dark:border-slate-800 font-outfit text-[10px] tracking-wider"
+                      className="flex items-center pl-1.5 border-r dark:border-slate-800 font-outfit text-[10px] tracking-wider"
                       style={{ gridColumn: `span ${slotsPerHour}` }}
                     >
                       <span>{getLabel(startHour)}</span>
-                      {isLast && <span>{getLabel(endHour)}</span>}
                     </div>
                   );
                 })}
+                <div className="absolute right-1.5 top-0 bottom-0 flex items-center font-outfit text-[10px] tracking-wider text-slate-400 pointer-events-none">
+                  {(() => {
+                    const hour = gridEndHour;
+                    if (hour === 0 || hour === 24) return '12 AM';
+                    if (hour === 12) return '12 PM';
+                    return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
+                  })()}
+                </div>
               </div>
             </div>
 
