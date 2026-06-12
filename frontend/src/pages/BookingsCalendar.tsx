@@ -47,7 +47,12 @@ export const BookingsCalendar: React.FC = () => {
   const { user, apiCall, theme, calendarInterval, calendarStartHour, calendarEndHour, maxMeetingDuration } = useAuth();
   
   // Date selector
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const saved = sessionStorage.getItem('calendarSelectedDate');
+    return saved ? new Date(saved) : new Date();
+  });
+
+  const [hasRestoredModal, setHasRestoredModal] = useState(false);
   
   // DB Lists
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -94,12 +99,20 @@ export const BookingsCalendar: React.FC = () => {
   const [dragRoomId, setDragRoomId] = useState<number | null>(null);
 
   // Derived calendar settings
+  const gridStartHour = rooms.length > 0
+    ? Math.min(...rooms.map(r => r.availableStartHour ?? 8))
+    : calendarStartHour;
+
+  const gridEndHour = rooms.length > 0
+    ? Math.max(...rooms.map(r => r.availableEndHour ?? 18))
+    : calendarEndHour;
+
   const slotsPerHour = 60 / calendarInterval;
-  const totalHours = calendarEndHour - calendarStartHour;
+  const totalHours = gridEndHour - gridStartHour;
   const totalSlotsCount = totalHours * slotsPerHour;
 
   const businessHours: number[] = [];
-  for (let h = calendarStartHour; h <= calendarEndHour; h++) {
+  for (let h = gridStartHour; h <= gridEndHour; h++) {
     businessHours.push(h);
   }
 
@@ -133,6 +146,106 @@ export const BookingsCalendar: React.FC = () => {
       window.removeEventListener('mouseup', handleGlobalMouseUp);
     };
   }, [isDragging, dragStartSlot, dragEndSlot, dragRoomId]);
+
+  // Save selectedDate to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('calendarSelectedDate', selectedDate.toISOString());
+  }, [selectedDate]);
+
+  // Restore modal states once data is loaded
+  useEffect(() => {
+    if (rooms.length === 0 || bookings.length === 0 || hasRestoredModal) return;
+
+    const savedStateStr = sessionStorage.getItem('calendarModalState');
+    if (savedStateStr) {
+      try {
+        const saved = JSON.parse(savedStateStr);
+        if (saved.isCreateModalOpen) {
+          setBookingTitle(saved.bookingTitle || '');
+          setBookingDesc(saved.bookingDesc || '');
+          setBookingRoomId(saved.bookingRoomId || 0);
+          setBookingStartSlot(saved.bookingStartSlot || 0);
+          setBookingEndSlot(saved.bookingEndSlot || 1);
+          setBookingRecurrence(saved.bookingRecurrence || '');
+          setBookingRecurrenceCount(saved.bookingRecurrenceCount || 1);
+          setBookingParticipantsText(saved.bookingParticipantsText || '');
+          setIsRoomLocked(saved.isRoomLocked || false);
+          setIsCreateModalOpen(true);
+        } else if (saved.isDetailsModalOpen && saved.selectedBookingId) {
+          const b = bookings.find(x => x.id === saved.selectedBookingId);
+          if (b) {
+            setSelectedBooking(b);
+            setIsEditing(saved.isEditing || false);
+            setEditTitle(saved.editTitle || '');
+            setEditDesc(saved.editDesc || '');
+            setEditRoomId(saved.editRoomId || 0);
+            setEditStartSlot(saved.editStartSlot || 0);
+            setEditEndSlot(saved.editEndSlot || 1);
+            setEditParticipantsText(saved.editParticipantsText || '');
+            setEditRecurrence(saved.editRecurrence || '');
+            setEditRecurrenceCount(saved.editRecurrenceCount || 1);
+            setIsDetailsModalOpen(true);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to parse calendarModalState', e);
+      }
+    }
+    setHasRestoredModal(true);
+  }, [rooms, bookings, hasRestoredModal]);
+
+  // Save modal state to sessionStorage (only after initial restore is complete)
+  useEffect(() => {
+    if (!hasRestoredModal) return;
+
+    const stateToSave = {
+      isCreateModalOpen,
+      isDetailsModalOpen,
+      selectedBookingId: selectedBooking?.id || null,
+      bookingTitle,
+      bookingDesc,
+      bookingRoomId,
+      bookingStartSlot,
+      bookingEndSlot,
+      bookingRecurrence,
+      bookingRecurrenceCount,
+      bookingParticipantsText,
+      isRoomLocked,
+      isEditing,
+      editTitle,
+      editDesc,
+      editRoomId,
+      editStartSlot,
+      editEndSlot,
+      editParticipantsText,
+      editRecurrence,
+      editRecurrenceCount,
+    };
+    sessionStorage.setItem('calendarModalState', JSON.stringify(stateToSave));
+  }, [
+    hasRestoredModal,
+    isCreateModalOpen,
+    isDetailsModalOpen,
+    selectedBooking,
+    bookingTitle,
+    bookingDesc,
+    bookingRoomId,
+    bookingStartSlot,
+    bookingEndSlot,
+    bookingRecurrence,
+    bookingRecurrenceCount,
+    bookingParticipantsText,
+    isRoomLocked,
+    isEditing,
+    editTitle,
+    editDesc,
+    editRoomId,
+    editStartSlot,
+    editEndSlot,
+    editParticipantsText,
+    editRecurrence,
+    editRecurrenceCount,
+  ]);
 
   const fetchBaseData = async () => {
     try {
@@ -178,7 +291,7 @@ export const BookingsCalendar: React.FC = () => {
   // Convert slot index to ISO string
   const getISOStringForSlot = (date: Date, slotIdx: number) => {
     const d = new Date(date);
-    const mTotal = calendarStartHour * 60 + slotIdx * calendarInterval;
+    const mTotal = gridStartHour * 60 + slotIdx * calendarInterval;
     const h = Math.floor(mTotal / 60);
     const m = mTotal % 60;
     
@@ -189,11 +302,11 @@ export const BookingsCalendar: React.FC = () => {
   // Check if a specific slot index is already booked (overlap checks)
   const isSlotBooked = (roomId: number, slotIdx: number, excludeBookingId?: number) => {
     const slotStart = new Date(selectedDate);
-    const startMinsTotal = calendarStartHour * 60 + slotIdx * calendarInterval;
+    const startMinsTotal = gridStartHour * 60 + slotIdx * calendarInterval;
     slotStart.setHours(Math.floor(startMinsTotal / 60), startMinsTotal % 60, 0, 0);
     
     const slotEnd = new Date(selectedDate);
-    const endMinsTotal = calendarStartHour * 60 + (slotIdx + 1) * calendarInterval;
+    const endMinsTotal = gridStartHour * 60 + (slotIdx + 1) * calendarInterval;
     slotEnd.setHours(Math.floor(endMinsTotal / 60), endMinsTotal % 60, 0, 0);
 
     return bookings.some(b => {
@@ -422,13 +535,13 @@ export const BookingsCalendar: React.FC = () => {
     const hours = date.getHours();
     const minutes = date.getMinutes();
     
-    const totalMinutes = (hours - calendarStartHour) * 60 + minutes;
+    const totalMinutes = (hours - gridStartHour) * 60 + minutes;
     const clamped = Math.max(0, Math.min(totalHours * 60, totalMinutes));
     return Math.floor(clamped / calendarInterval);
   };
 
   const formatSlotLabel = (slotIdx: number) => {
-    const mTotal = calendarStartHour * 60 + slotIdx * calendarInterval;
+    const mTotal = gridStartHour * 60 + slotIdx * calendarInterval;
     const h = Math.floor(mTotal / 60);
     const m = mTotal % 60;
     const labelHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
@@ -526,7 +639,7 @@ export const BookingsCalendar: React.FC = () => {
                     <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))`, gridAutoRows: 'minmax(80px, auto)' }}>
                       {/* Render background cells */}
                       {Array.from({ length: totalSlotsCount }).map((_, i) => {
-                        const slotHour = calendarStartHour + Math.floor(i / slotsPerHour);
+                        const slotHour = gridStartHour + Math.floor(i / slotsPerHour);
                         const roomStart = room.availableStartHour ?? 8;
                         const roomEnd = room.availableEndHour ?? 18;
                         const isOutsideHours = slotHour < roomStart || slotHour >= roomEnd;
@@ -740,7 +853,7 @@ export const BookingsCalendar: React.FC = () => {
                       const selectedRoomObj = rooms.find(r => r.id === bookingRoomId);
                       const activeRoomStart = selectedRoomObj?.availableStartHour ?? 8;
                       const activeRoomEnd = selectedRoomObj?.availableEndHour ?? 18;
-                      const slotHour = calendarStartHour + Math.floor(i / slotsPerHour);
+                      const slotHour = gridStartHour + Math.floor(i / slotsPerHour);
                       const isOutsideHours = slotHour < activeRoomStart || slotHour >= activeRoomEnd;
 
                       const isBooked = isSlotBooked(bookingRoomId, i);
@@ -770,7 +883,7 @@ export const BookingsCalendar: React.FC = () => {
                       const activeRoomEnd = selectedRoomObj?.availableEndHour ?? 18;
                       const activeRoomMaxDuration = selectedRoomObj?.maxDuration ?? maxMeetingDuration;
 
-                      const slotHour = calendarStartHour + Math.floor((i - 1) / slotsPerHour);
+                      const slotHour = gridStartHour + Math.floor((i - 1) / slotsPerHour);
                       const isOutsideHours = slotHour < activeRoomStart || slotHour >= activeRoomEnd;
 
                       const nextBooked = getFirstBookedSlotAfter(bookingRoomId, bookingStartSlot);
@@ -954,7 +1067,7 @@ export const BookingsCalendar: React.FC = () => {
                         const selectedRoomObj = rooms.find(r => r.id === editRoomId);
                         const activeRoomStart = selectedRoomObj?.availableStartHour ?? 8;
                         const activeRoomEnd = selectedRoomObj?.availableEndHour ?? 18;
-                        const slotHour = calendarStartHour + Math.floor(i / slotsPerHour);
+                        const slotHour = gridStartHour + Math.floor(i / slotsPerHour);
                         const isOutsideHours = slotHour < activeRoomStart || slotHour >= activeRoomEnd;
 
                         const isBooked = isSlotBooked(editRoomId, i, selectedBooking.id);
@@ -984,7 +1097,7 @@ export const BookingsCalendar: React.FC = () => {
                         const activeRoomEnd = selectedRoomObj?.availableEndHour ?? 18;
                         const activeRoomMaxDuration = selectedRoomObj?.maxDuration ?? maxMeetingDuration;
 
-                        const slotHour = calendarStartHour + Math.floor((i - 1) / slotsPerHour);
+                        const slotHour = gridStartHour + Math.floor((i - 1) / slotsPerHour);
                         const isOutsideHours = slotHour < activeRoomStart || slotHour >= activeRoomEnd;
 
                         const nextBooked = getFirstBookedSlotAfter(editRoomId, editStartSlot, selectedBooking.id);
