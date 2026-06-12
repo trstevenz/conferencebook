@@ -630,7 +630,7 @@ export const BookingsCalendar: React.FC = () => {
             {/* Timeline Hours Header */}
             <div className="flex bg-slate-50 dark:bg-slate-800 text-slate-400 font-semibold text-xs h-12">
               <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex items-center font-outfit">Rooms</div>
-              <div className="flex-1 relative h-full px-4" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))` }}>
+              <div className="flex-1 relative h-full" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))` }}>
                 {Array.from({ length: totalSlotsCount }).map((_, i) => {
                   const isHourStart = i % slotsPerHour === 0;
                   const isLastSlot = i === totalSlotsCount - 1;
@@ -650,19 +650,21 @@ export const BookingsCalendar: React.FC = () => {
                       className={`relative h-full border-r ${
                         isHourBoundary 
                           ? 'border-slate-300 dark:border-slate-700' 
-                          : 'border-slate-100 dark:border-slate-800/40'
-                      } ${i === 0 ? 'border-l border-slate-300 dark:border-slate-700' : ''}`}
+                          : 'border-slate-200 dark:border-slate-800'
+                      }`}
                     >
                       {isHourStart && (
                         <div 
-                          className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-1/2 bg-slate-50 dark:bg-slate-800 px-1 text-slate-400 font-semibold text-[10px] select-none whitespace-nowrap z-10"
+                          className={`absolute top-1/2 -translate-y-1/2 bg-slate-50 dark:bg-slate-800 px-1 text-slate-400 font-semibold text-[10px] select-none whitespace-nowrap z-10 ${
+                            i === 0 ? 'left-1' : 'left-0 -translate-x-1/2'
+                          }`}
                         >
                           {getLabel(hourNumber)}
                         </div>
                       )}
                       {isLastSlot && (
                         <div 
-                          className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 bg-slate-50 dark:bg-slate-800 px-1 text-slate-400 font-semibold text-[10px] select-none whitespace-nowrap z-10"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 bg-slate-50 dark:bg-slate-800 px-1 text-slate-400 font-semibold text-[10px] select-none whitespace-nowrap z-10"
                         >
                           {getLabel(hourNumber + 1)}
                         </div>
@@ -703,7 +705,7 @@ export const BookingsCalendar: React.FC = () => {
                     </div>
 
                     {/* Grid Hours cells */}
-                    <div className="flex-1 relative px-4" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))`, gridAutoRows: 'minmax(80px, auto)' }}>
+                    <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))`, gridAutoRows: 'minmax(80px, auto)' }}>
                       {/* Render background cells */}
                       {Array.from({ length: totalSlotsCount }).map((_, i) => {
                         const slotHour = gridStartHour + Math.floor(i / slotsPerHour);
@@ -748,9 +750,9 @@ export const BookingsCalendar: React.FC = () => {
                             }
                             className={`flex items-center justify-center transition-all group border-r ${
                               isHourBoundary 
-                                ? 'border-slate-300/80 dark:border-slate-700/80' 
-                                : 'border-slate-100 dark:border-slate-800/40'
-                            } ${i === 0 ? 'border-l border-slate-300/80 dark:border-slate-700/80' : ''} ${
+                                ? 'border-slate-300 dark:border-slate-700' 
+                                : 'border-slate-200 dark:border-slate-800'
+                            } ${
                               isOutsideHours
                                 ? 'stripes-bg cursor-not-allowed border-slate-200/60 dark:border-slate-800/60'
                                 : isSelected
