@@ -5,13 +5,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Plus,
-  Clock,
-  Users,
-  CheckCircle2,
   XCircle,
   Edit,
-  Trash2,
-  Check
+  Trash2
 } from 'lucide-react';
 
 interface Room {
@@ -45,7 +41,7 @@ interface Booking {
 }
 
 export const BookingsCalendar: React.FC = () => {
-  const { user, apiCall, theme } = useAuth();
+  const { user, apiCall, theme, calendarInterval, calendarStartHour, calendarEndHour } = useAuth();
   
   // Date selector
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -68,8 +64,8 @@ export const BookingsCalendar: React.FC = () => {
   const [bookingTitle, setBookingTitle] = useState('');
   const [bookingDesc, setBookingDesc] = useState('');
   const [bookingRoomId, setBookingRoomId] = useState<number>(0);
-  const [bookingStartTime, setBookingStartTime] = useState('');
-  const [bookingEndTime, setBookingEndTime] = useState('');
+  const [bookingStartSlot, setBookingStartSlot] = useState<number>(0);
+  const [bookingEndSlot, setBookingEndSlot] = useState<number>(1);
   const [bookingRecurrence, setBookingRecurrence] = useState('');
   const [bookingRecurrenceCount, setBookingRecurrenceCount] = useState<number>(1);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
@@ -80,8 +76,8 @@ export const BookingsCalendar: React.FC = () => {
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editRoomId, setEditRoomId] = useState<number>(0);
-  const [editStartTime, setEditStartTime] = useState('');
-  const [editEndTime, setEditEndTime] = useState('');
+  const [editStartSlot, setEditStartSlot] = useState<number>(0);
+  const [editEndSlot, setEditEndSlot] = useState<number>(1);
   const [editParticipantIds, setEditParticipantIds] = useState<number[]>([]);
   const [editRecurrence, setEditRecurrence] = useState('');
   const [editRecurrenceCount, setEditRecurrenceCount] = useState<number>(1);
@@ -92,8 +88,15 @@ export const BookingsCalendar: React.FC = () => {
   const [dragEndSlot, setDragEndSlot] = useState<number | null>(null);
   const [dragRoomId, setDragRoomId] = useState<number | null>(null);
 
-  // Business Hours (8 AM to 6 PM)
-  const businessHours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
+  // Derived calendar settings
+  const slotsPerHour = 60 / calendarInterval;
+  const totalHours = calendarEndHour - calendarStartHour;
+  const totalSlotsCount = totalHours * slotsPerHour;
+
+  const businessHours: number[] = [];
+  for (let h = calendarStartHour; h <= calendarEndHour; h++) {
+    businessHours.push(h);
+  }
 
   useEffect(() => {
     fetchBaseData();
@@ -167,10 +170,46 @@ export const BookingsCalendar: React.FC = () => {
     return date.toISOString().split('T')[0];
   };
 
-  // Helper to format date + hour to ISO string for submission
-  const combineDateAndHour = (date: Date, timeStr: string) => {
-    const dStr = getFormatDate(date);
-    return `${dStr}T${timeStr}:00`;
+  // Convert slot index to ISO string
+  const getISOStringForSlot = (date: Date, slotIdx: number) => {
+    const d = new Date(date);
+    const mTotal = calendarStartHour * 60 + slotIdx * calendarInterval;
+    const h = Math.floor(mTotal / 60);
+    const m = mTotal % 60;
+    
+    const formatPart = (n: number) => n < 10 ? '0' + n : n;
+    return `${d.getFullYear()}-${formatPart(d.getMonth() + 1)}-${formatPart(d.getDate())}T${formatPart(h)}:${formatPart(m)}:00`;
+  };
+
+  // Check if a specific slot index is already booked (overlap checks)
+  const isSlotBooked = (roomId: number, slotIdx: number, excludeBookingId?: number) => {
+    const slotStart = new Date(selectedDate);
+    const startMinsTotal = calendarStartHour * 60 + slotIdx * calendarInterval;
+    slotStart.setHours(Math.floor(startMinsTotal / 60), startMinsTotal % 60, 0, 0);
+    
+    const slotEnd = new Date(selectedDate);
+    const endMinsTotal = calendarStartHour * 60 + (slotIdx + 1) * calendarInterval;
+    slotEnd.setHours(Math.floor(endMinsTotal / 60), endMinsTotal % 60, 0, 0);
+
+    return bookings.some(b => {
+      if (b.room.id !== roomId) return false;
+      if (b.status === 'CANCELLED' || b.status === 'REJECTED') return false;
+      if (excludeBookingId && b.id === excludeBookingId) return false;
+
+      const bStart = new Date(b.startTime);
+      const bEnd = new Date(b.endTime);
+      return bStart < slotEnd && bEnd > slotStart;
+    });
+  };
+
+  // Find index of first booked slot after the selected start index (so we can disable end times past it)
+  const getFirstBookedSlotAfter = (roomId: number, startSlotIdx: number, excludeBookingId?: number) => {
+    for (let s = startSlotIdx; s < totalSlotsCount; s++) {
+      if (isSlotBooked(roomId, s, excludeBookingId)) {
+        return s; // index of first booked slot
+      }
+    }
+    return null;
   };
 
   const handleOpenCreateModal = (roomId?: number, startSlotIndex?: number, endSlotIndex?: number) => {
@@ -181,6 +220,8 @@ export const BookingsCalendar: React.FC = () => {
     setBookingRecurrence('');
     setBookingRecurrenceCount(1);
 
+    const activeRoomId = roomId || (rooms.length > 0 ? rooms[0].id : 0);
+
     if (roomId) {
       setBookingRoomId(roomId);
       setIsRoomLocked(true);
@@ -189,34 +230,31 @@ export const BookingsCalendar: React.FC = () => {
       setIsRoomLocked(false);
     }
 
-    // Default times based on 15-minute startSlotIndex
-    let startHour = 10;
-    let startMinute = 0;
-    if (startSlotIndex !== undefined) {
-      startHour = 8 + Math.floor((startSlotIndex * 15) / 60);
-      startMinute = (startSlotIndex * 15) % 60;
+    let startIdx = startSlotIndex !== undefined ? startSlotIndex : 8; // default 10 AM
+    
+    // Auto-align if default start slot is already booked
+    while (startIdx < totalSlotsCount && isSlotBooked(activeRoomId, startIdx)) {
+      startIdx++;
+    }
+    if (startIdx >= totalSlotsCount) {
+      startIdx = 0;
+      while (startIdx < totalSlotsCount && isSlotBooked(activeRoomId, startIdx)) {
+        startIdx++;
+      }
     }
 
-    // Default times based on 15-minute endSlotIndex
-    let endHour = 11;
-    let endMinute = 0;
-    if (endSlotIndex !== undefined) {
-      endHour = 8 + Math.floor((endSlotIndex * 15) / 60);
-      endMinute = (endSlotIndex * 15) % 60;
-    } else {
-      // Default meeting duration is 45 minutes
-      const endMinutesTotal = startHour * 60 + startMinute + 45;
-      endHour = Math.floor(endMinutesTotal / 60);
-      endMinute = endMinutesTotal % 60;
+    const firstBooked = getFirstBookedSlotAfter(activeRoomId, startIdx);
+    
+    let endIdx = endSlotIndex !== undefined ? endSlotIndex : startIdx + Math.max(1, Math.floor(45 / calendarInterval)); // default 45 mins
+    if (firstBooked !== null && endIdx > firstBooked) {
+      endIdx = firstBooked;
+    }
+    if (endIdx <= startIdx) {
+      endIdx = startIdx + 1;
     }
 
-    const formatPart = (num: number) => num < 10 ? `0${num}` : `${num}`;
-    const startHourStr = `${formatPart(startHour)}:${formatPart(startMinute)}`;
-    const endHourStr = `${formatPart(endHour)}:${formatPart(endMinute)}`;
-    
-    setBookingStartTime(combineDateAndHour(selectedDate, startHourStr));
-    setBookingEndTime(combineDateAndHour(selectedDate, endHourStr));
-    
+    setBookingStartSlot(startIdx);
+    setBookingEndSlot(endIdx);
     setIsCreateModalOpen(true);
   };
 
@@ -227,8 +265,8 @@ export const BookingsCalendar: React.FC = () => {
     const payload = {
       roomId: bookingRoomId,
       userId: user?.id,
-      startTime: bookingStartTime,
-      endTime: bookingEndTime,
+      startTime: getISOStringForSlot(selectedDate, bookingStartSlot),
+      endTime: getISOStringForSlot(selectedDate, bookingEndSlot),
       title: bookingTitle,
       description: bookingDesc,
       participantIds: selectedParticipantIds,
@@ -253,12 +291,15 @@ export const BookingsCalendar: React.FC = () => {
     setSelectedBooking(booking);
     setIsEditing(false);
 
-    // Prefill edit states
     setEditTitle(booking.title);
     setEditDesc(booking.description || '');
     setEditRoomId(booking.room.id);
-    setEditStartTime(booking.startTime.substring(0, 16));
-    setEditEndTime(booking.endTime.substring(0, 16));
+    
+    const startIdx = getSlotIndex(booking.startTime);
+    const endIdx = getSlotIndex(booking.endTime);
+    setEditStartSlot(startIdx);
+    setEditEndSlot(endIdx);
+
     setEditParticipantIds(booking.participants.map(p => p.id));
     setEditRecurrence(booking.recurringPattern || '');
     setEditRecurrenceCount(1);
@@ -274,8 +315,8 @@ export const BookingsCalendar: React.FC = () => {
     const payload = {
       roomId: editRoomId,
       userId: selectedBooking.user.id,
-      startTime: editStartTime,
-      endTime: editEndTime,
+      startTime: getISOStringForSlot(selectedDate, editStartSlot),
+      endTime: getISOStringForSlot(selectedDate, editEndSlot),
       title: editTitle,
       description: editDesc,
       participantIds: editParticipantIds,
@@ -357,9 +398,19 @@ export const BookingsCalendar: React.FC = () => {
     const hours = date.getHours();
     const minutes = date.getMinutes();
     
-    const totalMinutes = (hours - 8) * 60 + minutes;
-    const clamped = Math.max(0, Math.min(600, totalMinutes));
-    return Math.floor(clamped / 15);
+    const totalMinutes = (hours - calendarStartHour) * 60 + minutes;
+    const clamped = Math.max(0, Math.min(totalHours * 60, totalMinutes));
+    return Math.floor(clamped / calendarInterval);
+  };
+
+  const formatSlotLabel = (slotIdx: number) => {
+    const mTotal = calendarStartHour * 60 + slotIdx * calendarInterval;
+    const h = Math.floor(mTotal / 60);
+    const m = mTotal % 60;
+    const labelHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    const labelMinute = m < 10 ? '0' + m : m;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return `${labelHour}:${labelMinute} ${ampm}`;
   };
 
   return (
@@ -396,15 +447,14 @@ export const BookingsCalendar: React.FC = () => {
             {/* Timeline Hours Header */}
             <div className="flex bg-slate-50 dark:bg-slate-800/40 text-slate-400 font-semibold text-xs h-12">
               <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex items-center font-outfit">Rooms</div>
-              <div className="flex-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(40, minmax(20px, 1fr))' }}>
-                {Array.from({ length: 10 }).map((_, hourIdx) => {
-                  const h = 8 + hourIdx;
+              <div className="flex-1" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))` }}>
+                {businessHours.slice(0, -1).map(h => {
                   const label = h > 12 ? `${h - 12} PM` : h === 12 ? '12 PM' : `${h} AM`;
                   return (
                     <div
                       key={h}
                       className="flex items-center justify-center border-r dark:border-slate-800 text-center font-outfit text-[10px] tracking-wider"
-                      style={{ gridColumn: `span 4` }}
+                      style={{ gridColumn: `span ${slotsPerHour}` }}
                     >
                       {label}
                     </div>
@@ -433,20 +483,16 @@ export const BookingsCalendar: React.FC = () => {
                   <div key={room.id} className="flex border-b dark:border-slate-800">
                     {/* Room Detail Panel */}
                     <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex flex-col justify-center bg-slate-50/50 dark:bg-slate-900/50">
-                      <span className="font-bold text-sm leading-tight">{room.name}</span>
+                      <span className="font-bold text-sm leading-tight text-slate-700 dark:text-slate-200">{room.name}</span>
                       <span className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-wide">
                         Cap: {room.capacity} seats • Floor {room.floor}
                       </span>
                     </div>
 
                     {/* Grid Hours cells */}
-                    <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: 'repeat(40, minmax(20px, 1fr))', gridAutoRows: 'minmax(80px, auto)' }}>
-                      {/* Render background cells (40 slots) */}
-                      {Array.from({ length: 40 }).map((_, i) => {
-                        const cellHour = 8 + Math.floor((i * 15) / 60);
-                        const cellMinute = (i * 15) % 60;
-                        const cellTimeLabel = `${cellHour > 12 ? cellHour - 12 : cellHour}:${cellMinute === 0 ? '00' : cellMinute} ${cellHour >= 12 ? 'PM' : 'AM'}`;
-                        
+                    <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))`, gridAutoRows: 'minmax(80px, auto)' }}>
+                      {/* Render background cells */}
+                      {Array.from({ length: totalSlotsCount }).map((_, i) => {
                         const isSelected = isDragging &&
                           dragRoomId === room.id &&
                           dragStartSlot !== null &&
@@ -474,7 +520,7 @@ export const BookingsCalendar: React.FC = () => {
                             onContextMenu={(e) => {
                               e.preventDefault();
                             }}
-                            title={`Drag or click to book starting at ${cellTimeLabel} in ${room.name}`}
+                            title={`Drag or click to book starting at ${formatSlotLabel(i)} in ${room.name}`}
                             className={`border-r border-slate-100 dark:border-slate-800/40 cursor-pointer flex items-center justify-center transition-all group ${
                               isSelected
                                 ? 'bg-primary-500/35 dark:bg-primary-600/40 border-y border-primary-500/50'
@@ -485,17 +531,15 @@ export const BookingsCalendar: React.FC = () => {
                             <Plus className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                         );
-                      })}                      {/* Render actual bookings */}
+                      })}
+
+                      {/* Render actual bookings */}
                       {roomBookings.map(b => {
                         const startCol = getSlotIndex(b.startTime) + 1;
                         const endCol = getSlotIndex(b.endTime) + 1;
                         
-                        // Ensure it spans at least 1 column
-                        const span = Math.max(1, endCol - startCol);
-                        
                         const isPending = b.status === 'PENDING';
                         
-                        // Time formatting helper
                         const formatTime = (isoStr: string) => {
                           const date = new Date(isoStr);
                           let h = date.getHours();
@@ -535,7 +579,6 @@ export const BookingsCalendar: React.FC = () => {
                                 <span className="text-[9px] text-slate-500 dark:text-slate-400 truncate leading-none">
                                   {b.user.fullName}
                                 </span>
-                                {/* Requirement 3: Start and End Time Displayed on Card */}
                                 <span className="text-[8px] font-semibold text-primary-600 dark:text-primary-300 tracking-wider">
                                   {formattedStart} - {formattedEnd}
                                 </span>
@@ -562,7 +605,7 @@ export const BookingsCalendar: React.FC = () => {
             <div className="flex justify-between items-center mb-6">
               <h4 className="text-xl font-bold font-outfit">Create Meeting Booking</h4>
               <button onClick={() => setIsCreateModalOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
-                <ChevronLeft className="h-5 w-5" />
+                <XCircle className="h-5 w-5 text-slate-400" />
               </button>
             </div>
 
@@ -589,14 +632,19 @@ export const BookingsCalendar: React.FC = () => {
                 />
               </div>
 
-              {/* Room Selection */}
+              {/* Room Selection & Recurrence */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Conference Room</label>
-                  {/* Requirement 4: Room select is disabled/locked if user clicked a specific room cell */}
                   <select
                     value={bookingRoomId}
-                    onChange={e => setBookingRoomId(Number(e.target.value))}
+                    onChange={e => {
+                      const newRoomId = Number(e.target.value);
+                      setBookingRoomId(newRoomId);
+                      // Reset slots to prevent issues with other room bookings
+                      setBookingStartSlot(0);
+                      setBookingEndSlot(1);
+                    }}
                     disabled={isRoomLocked}
                     className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
                       theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
@@ -623,34 +671,58 @@ export const BookingsCalendar: React.FC = () => {
                 </div>
               </div>
 
-              {/* Time Range & Recurrence Count */}
+              {/* Start & End Slot Selector Dropdowns (Requirement 1: No Date Picker, 15m intervals only, Disables booked times) */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Start Date/Time</label>
-                  <input
-                    type="datetime-local"
-                    required
-                    step="900" // Requirement 2: every 15 mins step
-                    value={bookingStartTime}
-                    onChange={e => setBookingStartTime(e.target.value)}
-                    className={`w-full rounded-2xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2 font-outfit">Start Time</label>
+                  <select
+                    value={bookingStartSlot}
+                    onChange={e => {
+                      const newStart = Number(e.target.value);
+                      setBookingStartSlot(newStart);
+                      const nextBooked = getFirstBookedSlotAfter(bookingRoomId, newStart);
+                      if (bookingEndSlot <= newStart || (nextBooked !== null && bookingEndSlot > nextBooked)) {
+                        setBookingEndSlot(newStart + 1);
+                      }
+                    }}
+                    className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
                       theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
                     }`}
-                  />
+                  >
+                    {Array.from({ length: totalSlotsCount }).map((_, i) => {
+                      const isBooked = isSlotBooked(bookingRoomId, i);
+                      return (
+                        <option key={i} value={i} disabled={isBooked}>
+                          {formatSlotLabel(i)} {isBooked ? '(Booked)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
+
                 <div className="col-span-1">
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">End Date/Time</label>
-                  <input
-                    type="datetime-local"
-                    required
-                    step="900" // Requirement 2: every 15 mins step
-                    value={bookingEndTime}
-                    onChange={e => setBookingEndTime(e.target.value)}
-                    className={`w-full rounded-2xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2 font-outfit">End Time</label>
+                  <select
+                    value={bookingEndSlot}
+                    onChange={e => setBookingEndSlot(Number(e.target.value))}
+                    className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
                       theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
                     }`}
-                  />
+                  >
+                    {Array.from({ length: totalSlotsCount }).map((_, idx) => {
+                      const i = idx + 1; // End slots are 1-indexed to totalSlotsCount
+                      const nextBooked = getFirstBookedSlotAfter(bookingRoomId, bookingStartSlot);
+                      const isOptionDisabled = i <= bookingStartSlot || (nextBooked !== null && i > nextBooked);
+                      
+                      return (
+                        <option key={i} value={i} disabled={isOptionDisabled}>
+                          {formatSlotLabel(i)}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
+
                 <div className="col-span-1">
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Occurrences</label>
                   <input
@@ -754,7 +826,7 @@ export const BookingsCalendar: React.FC = () => {
             )}
 
             {isEditing ? (
-              // EDIT MODE FORM (Requirement 5: Modify booking anytime)
+              // EDIT MODE FORM (Requirement 1 & 5: Time dropdown selection and conflicts checked)
               <form onSubmit={handleUpdateBooking} className="space-y-4">
                 {/* Title */}
                 <div>
@@ -770,13 +842,18 @@ export const BookingsCalendar: React.FC = () => {
                   />
                 </div>
 
-                {/* Room Select */}
+                {/* Room Select & Recurrence */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Conference Room</label>
                     <select
                       value={editRoomId}
-                      onChange={e => setEditRoomId(Number(e.target.value))}
+                      onChange={e => {
+                        const newRoomId = Number(e.target.value);
+                        setEditRoomId(newRoomId);
+                        setEditStartSlot(0);
+                        setEditEndSlot(1);
+                      }}
                       className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
                         theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
                       }`}
@@ -802,34 +879,58 @@ export const BookingsCalendar: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Time range */}
+                {/* Start & End slot dropdown lists */}
                 <div className="grid grid-cols-3 gap-4">
                   <div className="col-span-1">
-                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Start Date/Time</label>
-                    <input
-                      type="datetime-local"
-                      required
-                      step="900" // Enforce 15 mins step
-                      value={editStartTime}
-                      onChange={e => setEditStartTime(e.target.value)}
-                      className={`w-full rounded-2xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2 font-outfit">Start Time</label>
+                    <select
+                      value={editStartSlot}
+                      onChange={e => {
+                        const newStart = Number(e.target.value);
+                        setEditStartSlot(newStart);
+                        const nextBooked = getFirstBookedSlotAfter(editRoomId, newStart, selectedBooking.id);
+                        if (editEndSlot <= newStart || (nextBooked !== null && editEndSlot > nextBooked)) {
+                          setEditEndSlot(newStart + 1);
+                        }
+                      }}
+                      className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
                         theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
                       }`}
-                    />
+                    >
+                      {Array.from({ length: totalSlotsCount }).map((_, i) => {
+                        const isBooked = isSlotBooked(editRoomId, i, selectedBooking.id);
+                        return (
+                          <option key={i} value={i} disabled={isBooked}>
+                            {formatSlotLabel(i)} {isBooked ? '(Booked)' : ''}
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
+
                   <div className="col-span-1">
-                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">End Date/Time</label>
-                    <input
-                      type="datetime-local"
-                      required
-                      step="900" // Enforce 15 mins step
-                      value={editEndTime}
-                      onChange={e => setEditEndTime(e.target.value)}
-                      className={`w-full rounded-2xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2 font-outfit">End Time</label>
+                    <select
+                      value={editEndSlot}
+                      onChange={e => setEditEndSlot(Number(e.target.value))}
+                      className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
                         theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
                       }`}
-                    />
+                    >
+                      {Array.from({ length: totalSlotsCount }).map((_, idx) => {
+                        const i = idx + 1;
+                        const nextBooked = getFirstBookedSlotAfter(editRoomId, editStartSlot, selectedBooking.id);
+                        const isOptionDisabled = i <= editStartSlot || (nextBooked !== null && i > nextBooked);
+                        
+                        return (
+                          <option key={i} value={i} disabled={isOptionDisabled}>
+                            {formatSlotLabel(i)}
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
+
                   <div className="col-span-1">
                     <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Occurrences</label>
                     <input
@@ -949,7 +1050,7 @@ export const BookingsCalendar: React.FC = () => {
                   {selectedBooking.recurringPattern && (
                     <div>
                       <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-1 font-outfit font-medium">Recurrence</span>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border inline-block bg-indigo-500/10 text-indigo-600 border-indigo-500/20">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border inline-block bg-blue-500/10 text-blue-600 border-blue-500/20">
                         {selectedBooking.recurringPattern}
                       </span>
                     </div>

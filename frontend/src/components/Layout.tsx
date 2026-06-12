@@ -133,7 +133,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
               <Bot className="h-5 w-5" />
             </div>
             {isSidebarOpen && (
-              <span className="font-semibold text-lg font-outfit tracking-wide bg-gradient-to-r from-primary-600 to-indigo-500 bg-clip-text text-transparent">
+              <span className="font-semibold text-lg font-outfit tracking-wide bg-gradient-to-r from-primary-600 to-blue-800 bg-clip-text text-transparent">
                 Antigravity Rooms
               </span>
             )}
@@ -243,7 +243,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
             {/* Profile */}
             <div className="flex items-center gap-3 pl-2 border-l dark:border-slate-700">
-              <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-primary-600 to-indigo-500 text-white flex items-center justify-center font-bold">
+              <div className="h-9 w-9 rounded-xl bg-gradient-to-tr from-primary-600 to-blue-800 text-white flex items-center justify-center font-bold">
                 {user.fullName.charAt(0)}
               </div>
               <div className="text-left md:block hidden">
@@ -265,7 +265,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* Floating AI Chat Trigger */}
       <button
         onClick={() => setIsAIChatOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 bg-gradient-to-tr from-primary-600 to-indigo-500 text-white rounded-full shadow-2xl shadow-primary-500/30 flex items-center justify-center hover:scale-105 transition-all z-40"
+        className="fixed bottom-6 right-6 h-14 w-14 bg-gradient-to-tr from-primary-600 to-blue-800 text-white rounded-full shadow-2xl shadow-primary-500/30 flex items-center justify-center hover:scale-105 transition-all z-40"
       >
         <Bot className="h-6 w-6" />
       </button>

@@ -101,7 +101,7 @@ export const Dashboard: React.FC = () => {
   return (
     <div className="space-y-8 animate-fadeIn">
       {/* Welcome Banner */}
-      <div className="p-8 rounded-3xl bg-gradient-to-tr from-primary-600 via-primary-600 to-indigo-600 text-white relative overflow-hidden shadow-xl shadow-primary-500/10">
+      <div className="p-8 rounded-3xl bg-gradient-to-tr from-primary-600 via-primary-600 to-blue-800 text-white relative overflow-hidden shadow-xl shadow-primary-500/10">
         <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-white/5 translate-x-10 -translate-y-10" />
         <div className="absolute bottom-0 left-1/3 h-28 w-28 rounded-full bg-white/5 -translate-x-10 translate-y-10" />
 
@@ -156,7 +156,7 @@ export const Dashboard: React.FC = () => {
 
         {/* Occupancy Rate */}
         <div className="p-6 rounded-2xl border dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex items-center gap-5">
-          <div className="p-4 rounded-xl bg-indigo-500/10 text-indigo-500">
+          <div className="p-4 rounded-xl bg-blue-500/10 text-blue-600">
             <Percent className="h-6 w-6" />
           </div>
           <div>

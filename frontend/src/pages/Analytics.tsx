@@ -103,7 +103,7 @@ export const Analytics: React.FC = () => {
         </div>
 
         <div className="p-6 rounded-2xl border dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm flex items-center gap-4.5">
-          <div className="p-3.5 rounded-xl bg-indigo-500/10 text-indigo-500">
+          <div className="p-3.5 rounded-xl bg-blue-500/10 text-blue-600">
             <TrendingUp className="h-5.5 w-5.5" />
           </div>
           <div>
@@ -135,7 +135,7 @@ export const Analytics: React.FC = () => {
                   {/* Bar */}
                   <div
                     style={{ height: `${heightPercent}%` }}
-                    className="w-8 bg-gradient-to-t from-primary-600 to-indigo-500 rounded-t-lg group-hover:brightness-105 transition-all shadow-md shadow-primary-500/10"
+                    className="w-8 bg-gradient-to-t from-primary-600 to-blue-800 rounded-t-lg group-hover:brightness-105 transition-all shadow-md shadow-primary-500/10"
                   />
                   {/* Label */}
                   <span className="text-[9px] text-slate-400 font-semibold mt-2 truncate w-14 text-center">
@@ -150,7 +150,7 @@ export const Analytics: React.FC = () => {
         {/* Card 2: Department Share (Horizontal Progress Bars) */}
         <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 p-6 rounded-3xl shadow-sm">
           <h4 className="font-bold text-sm mb-6 flex items-center gap-2">
-            <Users className="h-4.5 w-4.5 text-indigo-500" />
+            <Users className="h-4.5 w-4.5 text-blue-600" />
             Booking Distribution by Department
           </h4>
           <div className="space-y-4">
@@ -168,7 +168,7 @@ export const Analytics: React.FC = () => {
                     <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div
                         style={{ width: `${widthPercent}%` }}
-                        className="h-full bg-gradient-to-r from-primary-500 to-indigo-500 rounded-full"
+                        className="h-full bg-gradient-to-r from-primary-500 to-blue-800 rounded-full"
                       />
                     </div>
                   </div>
@@ -197,7 +197,7 @@ export const Analytics: React.FC = () => {
                   {/* Bar */}
                   <div
                     style={{ height: `${heightPercent}%` }}
-                    className="w-6 bg-gradient-to-t from-indigo-500 to-indigo-600 rounded-t-md group-hover:brightness-105 transition-all"
+                    className="w-6 bg-gradient-to-t from-blue-600 to-blue-700 rounded-t-md group-hover:brightness-105 transition-all"
                   />
                   {/* Label */}
                   <span className="text-[9px] text-slate-400 font-semibold mt-2 text-center whitespace-nowrap">

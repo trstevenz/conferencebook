@@ -29,6 +29,10 @@ interface AuthContextType {
   apiCall: (path: string, options?: RequestInit) => Promise<any>;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
+  calendarInterval: number;
+  calendarStartHour: number;
+  calendarEndHour: number;
+  updateCalendarSettings: (interval: number, startHour: number, endHour: number) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,6 +43,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedUser = localStorage.getItem('user');
     return savedUser ? JSON.parse(savedUser) : null;
   });
+
+  const [calendarInterval, setCalendarInterval] = useState<number>(() => {
+    const saved = localStorage.getItem('calendarInterval');
+    return saved ? Number(saved) : 15;
+  });
+  const [calendarStartHour, setCalendarStartHour] = useState<number>(() => {
+    const saved = localStorage.getItem('calendarStartHour');
+    return saved ? Number(saved) : 8;
+  });
+  const [calendarEndHour, setCalendarEndHour] = useState<number>(() => {
+    const saved = localStorage.getItem('calendarEndHour');
+    return saved ? Number(saved) : 18;
+  });
+
+  const updateCalendarSettings = (interval: number, startHour: number, endHour: number) => {
+    setCalendarInterval(interval);
+    setCalendarStartHour(startHour);
+    setCalendarEndHour(endHour);
+    localStorage.setItem('calendarInterval', String(interval));
+    localStorage.setItem('calendarStartHour', String(startHour));
+    localStorage.setItem('calendarEndHour', String(endHour));
+  };
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark';
@@ -145,6 +171,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       apiCall,
       theme,
       toggleTheme,
+      calendarInterval,
+      calendarStartHour,
+      calendarEndHour,
+      updateCalendarSettings
     }}>
       {children}
     </AuthContext.Provider>

@@ -81,7 +81,7 @@ John: Excellent. Decision is made: SQLite for initial phase. David will write JP
             <button
               type="submit"
               disabled={isLoading || !transcript.trim()}
-              className="w-full py-3.5 bg-gradient-to-tr from-primary-600 to-indigo-500 hover:opacity-95 text-white text-xs font-semibold rounded-2xl shadow-lg shadow-primary-500/25 flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-gradient-to-tr from-primary-600 to-blue-800 hover:opacity-95 text-white text-xs font-semibold rounded-2xl shadow-lg shadow-primary-500/25 flex items-center justify-center gap-2"
             >
               <Sparkles className="h-4 w-4" />
               {isLoading ? 'Summarizing...' : 'Extract Key Summary'}
@@ -93,7 +93,7 @@ John: Excellent. Decision is made: SQLite for initial phase. David will write JP
         <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 p-6 rounded-3xl shadow-sm flex flex-col h-[500px] relative">
           <div className="flex justify-between items-center mb-4">
             <h4 className="font-bold text-sm flex items-center gap-2">
-              <Sparkles className="h-4.5 w-4.5 text-indigo-500" />
+              <Sparkles className="h-4.5 w-4.5 text-blue-600" />
               Extracted Action Items
             </h4>
             {summaryMarkdown && (
