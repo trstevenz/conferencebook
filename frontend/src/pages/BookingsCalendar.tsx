@@ -592,7 +592,14 @@ export const BookingsCalendar: React.FC = () => {
               <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex items-center font-outfit">Rooms</div>
               <div className="flex-1" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))` }}>
                 {businessHours.slice(0, -1).map(h => {
-                  const label = h > 12 ? `${h - 12} PM` : h === 12 ? '12 PM' : `${h} AM`;
+                  const startHour = h;
+                  const endHour = h + 1;
+                  const getLabel = (hour: number) => {
+                    if (hour === 0 || hour === 24) return '12 AM';
+                    if (hour === 12) return '12 PM';
+                    return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
+                  };
+                  const label = `${getLabel(startHour)} - ${getLabel(endHour)}`;
                   return (
                     <div
                       key={h}
