@@ -54,6 +54,8 @@ export const BookingsCalendar: React.FC = () => {
   });
 
   const [hasRestoredModal, setHasRestoredModal] = useState(false);
+  const [isRoomsLoaded, setIsRoomsLoaded] = useState(false);
+  const [isBookingsLoaded, setIsBookingsLoaded] = useState(false);
   
   // DB Lists
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -186,7 +188,7 @@ export const BookingsCalendar: React.FC = () => {
 
   // Restore modal states once data is loaded
   useEffect(() => {
-    if (rooms.length === 0 || bookings.length === 0 || hasRestoredModal) return;
+    if (!isRoomsLoaded || !isBookingsLoaded || hasRestoredModal) return;
 
     const savedStateStr = sessionStorage.getItem('calendarModalState');
     if (savedStateStr) {
@@ -224,7 +226,7 @@ export const BookingsCalendar: React.FC = () => {
       }
     }
     setHasRestoredModal(true);
-  }, [rooms, bookings, hasRestoredModal]);
+  }, [rooms, bookings, hasRestoredModal, isRoomsLoaded, isBookingsLoaded]);
 
   // Save modal state to sessionStorage (only after initial restore is complete)
   useEffect(() => {
@@ -288,6 +290,7 @@ export const BookingsCalendar: React.FC = () => {
 
       const usersData = await apiCall('/api/auth/users');
       setUsersList(usersData.filter((u: any) => u.id !== user?.id)); // exclude self
+      setIsRoomsLoaded(true);
     } catch (err: any) {
       console.error('Error fetching base details:', err);
     }
@@ -300,6 +303,7 @@ export const BookingsCalendar: React.FC = () => {
       }
       const bookingsData = await apiCall('/api/bookings');
       setBookings(bookingsData);
+      setIsBookingsLoaded(true);
     } catch (err: any) {
       console.error('Error fetching bookings:', err);
     } finally {
@@ -627,7 +631,7 @@ export const BookingsCalendar: React.FC = () => {
             {/* Timeline Hours Header */}
             <div className="flex bg-slate-50 dark:bg-slate-800/40 text-slate-400 font-semibold text-xs h-12">
               <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex items-center font-outfit">Rooms</div>
-              <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))` }}>
+              <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))`, paddingRight: '32px' }}>
                 {businessHours.slice(0, -1).map((h) => {
                   const startHour = h;
                   const getLabel = (hour: number) => {
@@ -645,7 +649,7 @@ export const BookingsCalendar: React.FC = () => {
                     </div>
                   );
                 })}
-                <div className="absolute right-1.5 top-0 bottom-0 flex items-center font-outfit text-[10px] tracking-wider text-slate-400 pointer-events-none">
+                <div className="absolute right-[32px] translate-x-1/2 top-0 bottom-0 flex items-center font-outfit text-[10px] tracking-wider text-slate-400 pointer-events-none">
                   {(() => {
                     const hour = gridEndHour;
                     if (hour === 0 || hour === 24) return '12 AM';
@@ -686,7 +690,7 @@ export const BookingsCalendar: React.FC = () => {
                     </div>
 
                     {/* Grid Hours cells */}
-                    <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))`, gridAutoRows: 'minmax(80px, auto)' }}>
+                    <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))`, gridAutoRows: 'minmax(80px, auto)', paddingRight: '32px' }}>
                       {/* Render background cells */}
                       {Array.from({ length: totalSlotsCount }).map((_, i) => {
                         const slotHour = gridStartHour + Math.floor(i / slotsPerHour);
