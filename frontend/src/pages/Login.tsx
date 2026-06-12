@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Bot, Key, User, Mail, Building, ShieldAlert } from 'lucide-react';
+import { Bot, Key, User, Mail, Building, ShieldAlert, CheckCircle2 } from 'lucide-react';
 
 export const Login: React.FC = () => {
   const { login, apiCall, theme } = useAuth();
