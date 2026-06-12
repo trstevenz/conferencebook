@@ -48,6 +48,8 @@ public class DatabaseSeeder implements CommandLineRunner {
                     "manager@enterprise.com", "Engineering Manager", UserRole.MANAGER, eng));
             userRepository.save(new User("employee", passwordEncoder.encode("password123"), 
                     "employee@enterprise.com", "Software Engineer", UserRole.EMPLOYEE, eng));
+            userRepository.save(new User("superuser", passwordEncoder.encode("password123"), 
+                    "superuser@enterprise.com", "Super User", UserRole.SUPER_USER, eng));
             
             // Seed Rooms
             roomRepository.save(new Room(

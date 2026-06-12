@@ -49,7 +49,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const menuItems = [
     { name: 'Dashboard', icon: LayoutDashboard, path: '/', roles: ['EMPLOYEE', 'MANAGER', 'FACILITY_ADMIN', 'SUPER_ADMIN'] },
-    { name: 'Bookings Calendar', icon: Calendar, path: '/calendar', roles: ['EMPLOYEE', 'MANAGER', 'FACILITY_ADMIN', 'SUPER_ADMIN'] },
+    { name: 'Booking Room', icon: Calendar, path: '/calendar', roles: ['EMPLOYEE', 'MANAGER', 'FACILITY_ADMIN', 'SUPER_ADMIN', 'SUPER_USER'] },
     { name: 'Team Bookings', icon: Shield, path: '/team-bookings', roles: ['MANAGER', 'SUPER_ADMIN'] },
     { name: 'Room Directory', icon: Settings, path: '/rooms', roles: ['FACILITY_ADMIN', 'SUPER_ADMIN'] },
     { name: 'Maintenance Logs', icon: Hammer, path: '/maintenance', roles: ['FACILITY_ADMIN', 'SUPER_ADMIN'] },
@@ -186,51 +186,53 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
             </button>
 
             {/* Notifications Dropdown */}
-            <div className="relative">
-              <button onClick={() => setIsNotifOpen(!isNotifOpen)} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all relative">
-                <Bell className="h-5 w-5" />
-                {unreadNotifs.length > 0 && (
-                  <span className="absolute top-1 right-1 h-4 w-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
-                    {unreadNotifs.length}
-                  </span>
-                )}
-              </button>
+            {user.role !== 'SUPER_USER' && (
+              <div className="relative">
+                <button onClick={() => setIsNotifOpen(!isNotifOpen)} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all relative">
+                  <Bell className="h-5 w-5" />
+                  {unreadNotifs.length > 0 && (
+                    <span className="absolute top-1 right-1 h-4 w-4 bg-rose-500 text-white rounded-full text-[10px] flex items-center justify-center font-bold">
+                      {unreadNotifs.length}
+                    </span>
+                  )}
+                </button>
 
-              {isNotifOpen && (
-                <div className={`absolute right-0 mt-3 w-80 rounded-2xl shadow-xl border overflow-hidden z-50 ${theme === 'dark' ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-200'}`}>
-                  <div className="px-5 py-4 border-b border-inherit flex items-center justify-between">
-                    <span className="font-semibold font-outfit">Notifications</span>
-                    <span className="text-xs text-slate-500">{unreadNotifs.length} new</span>
-                  </div>
-                  <div className="max-h-72 overflow-y-auto divide-y dark:divide-slate-700">
-                    {notifications.length === 0 ? (
-                      <div className="p-5 text-center text-sm text-slate-500">No alerts yet</div>
-                    ) : (
-                      notifications.map(n => (
-                        <div key={n.id} className={`p-4 flex gap-3 ${!n.readStatus ? 'bg-primary-500/5 dark:bg-primary-500/10' : ''}`}>
-                          <div className="mt-0.5">
-                            {n.type.includes('CANCEL') || n.type.includes('REJECT') ? (
-                              <AlertCircle className="h-4.5 w-4.5 text-rose-500" />
-                            ) : (
-                              <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" />
-                            )}
+                {isNotifOpen && (
+                  <div className={`absolute right-0 mt-3 w-80 rounded-2xl shadow-xl border overflow-hidden z-50 ${theme === 'dark' ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-200'}`}>
+                    <div className="px-5 py-4 border-b border-inherit flex items-center justify-between">
+                      <span className="font-semibold font-outfit">Notifications</span>
+                      <span className="text-xs text-slate-500">{unreadNotifs.length} new</span>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto divide-y dark:divide-slate-700">
+                      {notifications.length === 0 ? (
+                        <div className="p-5 text-center text-sm text-slate-500">No alerts yet</div>
+                      ) : (
+                        notifications.map(n => (
+                          <div key={n.id} className={`p-4 flex gap-3 ${!n.readStatus ? 'bg-primary-500/5 dark:bg-primary-500/10' : ''}`}>
+                            <div className="mt-0.5">
+                              {n.type.includes('CANCEL') || n.type.includes('REJECT') ? (
+                                <AlertCircle className="h-4.5 w-4.5 text-rose-500" />
+                              ) : (
+                                <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-xs truncate">{n.title}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{n.message}</p>
+                              {!n.readStatus && (
+                                <button onClick={() => markNotificationRead(n.id)} className="text-[10px] text-primary-600 font-semibold mt-2 hover:underline">
+                                  Mark Read
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-xs truncate">{n.title}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{n.message}</p>
-                            {!n.readStatus && (
-                              <button onClick={() => markNotificationRead(n.id)} className="text-[10px] text-primary-600 font-semibold mt-2 hover:underline">
-                                Mark Read
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
 
             {/* Profile */}
             <div className="flex items-center gap-3 pl-2 border-l dark:border-slate-700">
@@ -257,21 +259,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Content Body */}
-        <main className="flex-1 p-8 overflow-y-auto relative">
+        <main className={`flex-1 overflow-y-auto relative ${user.role === 'SUPER_USER' ? 'p-0' : 'p-8'}`}>
           {children}
         </main>
       </div>
 
       {/* Floating AI Chat Trigger */}
-      <button
-        onClick={() => setIsAIChatOpen(true)}
-        className="fixed bottom-6 right-6 h-14 w-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-2xl shadow-primary-500/30 flex items-center justify-center hover:scale-105 transition-all z-40"
-      >
-        <Bot className="h-6 w-6" />
-      </button>
+      {user.role !== 'SUPER_USER' && (
+        <button
+          onClick={() => setIsAIChatOpen(true)}
+          className="fixed bottom-6 right-6 h-14 w-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-2xl shadow-primary-500/30 flex items-center justify-center hover:scale-105 transition-all z-40"
+        >
+          <Bot className="h-6 w-6" />
+        </button>
+      )}
 
       {/* AI Assistant Chat Drawer */}
-      {isAIChatOpen && (
+      {isAIChatOpen && user.role !== 'SUPER_USER' && (
         <>
           {/* Backdrop */}
           <div onClick={() => setIsAIChatOpen(false)} className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40" />

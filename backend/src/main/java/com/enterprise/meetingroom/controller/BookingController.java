@@ -134,7 +134,7 @@ public class BookingController {
                 booking.setParticipants(participants);
             }
 
-            Booking updated = bookingService.updateBooking(id, booking, httpServletRequest.getRemoteAddr());
+            Booking updated = bookingService.updateBooking(id, booking, principal.getId(), httpServletRequest.getRemoteAddr());
             return ResponseEntity.ok(updated);
         } catch (BookingException ex) {
             return ResponseEntity.badRequest().body(new MessageResponse(ex.getMessage()));

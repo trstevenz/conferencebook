@@ -127,9 +127,16 @@ public class BookingService {
     }
 
     @Transactional
-    public Booking updateBooking(Long bookingId, Booking bookingDetails, String ipAddress) {
+    public Booking updateBooking(Long bookingId, Booking bookingDetails, Long userId, String ipAddress) {
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BookingException("Booking not found"));
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BookingException("User not found"));
+
+        if ((user.getRole() == UserRole.EMPLOYEE || user.getRole() == UserRole.SUPER_USER) && !booking.getUser().getId().equals(userId)) {
+            throw new BookingException("You do not have permission to modify another user's booking.");
+        }
 
         if (booking.getStatus() == BookingStatus.CANCELLED || booking.getStatus() == BookingStatus.COMPLETED) {
             throw new BookingException("Cannot modify booking in status " + booking.getStatus());
@@ -176,8 +183,8 @@ public class BookingService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BookingException("User not found"));
 
-        // Rule: Employees can only cancel their own bookings. Managers/Admins can cancel any.
-        if (user.getRole() == UserRole.EMPLOYEE && !booking.getUser().getId().equals(userId)) {
+        // Rule: Employees / Super Users can only cancel their own bookings. Managers/Admins can cancel any.
+        if ((user.getRole() == UserRole.EMPLOYEE || user.getRole() == UserRole.SUPER_USER) && !booking.getUser().getId().equals(userId)) {
             throw new BookingException("You do not have permission to cancel another employee's booking.");
         }
 

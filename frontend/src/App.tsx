@@ -21,7 +21,8 @@ const AuthenticatedApp: React.FC = () => {
   // Helper to restrict access based on roles
   const ProtectedRoute = ({ children, allowedRoles }: { children: React.ReactNode, allowedRoles: string[] }) => {
     if (!allowedRoles.includes(user.role)) {
-      return <Navigate to="/" replace />;
+      const redirectPath = user.role === 'SUPER_USER' ? '/calendar' : '/';
+      return <Navigate to={redirectPath} replace />;
     }
     return <>{children}</>;
   };
@@ -29,9 +30,17 @@ const AuthenticatedApp: React.FC = () => {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={
+          <ProtectedRoute allowedRoles={['EMPLOYEE', 'MANAGER', 'FACILITY_ADMIN', 'SUPER_ADMIN']}>
+            <Dashboard />
+          </ProtectedRoute>
+        } />
         <Route path="/calendar" element={<BookingsCalendar />} />
-        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/analytics" element={
+          <ProtectedRoute allowedRoles={['EMPLOYEE', 'MANAGER', 'FACILITY_ADMIN', 'SUPER_ADMIN']}>
+            <Analytics />
+          </ProtectedRoute>
+        } />
         
         {/* Manager & Admin */}
         <Route path="/team-bookings" element={
@@ -60,7 +69,7 @@ const AuthenticatedApp: React.FC = () => {
           </ProtectedRoute>
         } />
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to={user.role === 'SUPER_USER' ? '/calendar' : '/'} replace />} />
       </Routes>
     </Layout>
   );
