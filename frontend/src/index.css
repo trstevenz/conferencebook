@@ -31,21 +31,27 @@ body {
 
 /* Custom Scrollbar for modern dashboards */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.5);
+  background: rgba(241, 245, 249, 0.5);
   border-radius: 4px;
 }
 
+.dark ::-webkit-scrollbar-track {
+  background: rgba(30, 41, 59, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(156, 163, 175, 0.6);
+  border-radius: 4px;
+  border: 1.5px solid transparent;
+}
+
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(156, 163, 175, 0.8);
+  background: rgba(156, 163, 175, 0.9);
 }
 
 /* Diagonal Stripes for Unavailable Hours */

@@ -625,13 +625,12 @@ export const BookingsCalendar: React.FC = () => {
       </div>
 
       {/* Grid Timeline scheduler */}
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <div className="min-w-[1200px] divide-y dark:divide-slate-800">
+      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl overflow-x-auto shadow-sm">
+        <div className="min-w-[1200px] divide-y dark:divide-slate-800">
             {/* Timeline Hours Header */}
             <div className="flex bg-slate-50 dark:bg-slate-800/40 text-slate-400 font-semibold text-xs h-12">
               <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex items-center font-outfit">Rooms</div>
-              <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))`, paddingRight: '32px' }}>
+              <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))` }}>
                 {businessHours.slice(0, -1).map((h) => {
                   const startHour = h;
                   const getLabel = (hour: number) => {
@@ -642,21 +641,16 @@ export const BookingsCalendar: React.FC = () => {
                   return (
                     <div
                       key={h}
-                      className="flex items-center pl-1.5 border-r dark:border-slate-800 font-outfit text-[10px] tracking-wider"
+                      className="flex items-center justify-between px-1.5 border-r dark:border-slate-800 font-outfit text-[10px] tracking-wider text-slate-400"
                       style={{ gridColumn: `span ${slotsPerHour}` }}
                     >
                       <span>{getLabel(startHour)}</span>
+                      {startHour === gridEndHour - 1 && (
+                        <span>{getLabel(gridEndHour)}</span>
+                      )}
                     </div>
                   );
                 })}
-                <div className="absolute right-[32px] translate-x-1/2 top-0 bottom-0 flex items-center font-outfit text-[10px] tracking-wider text-slate-400 pointer-events-none">
-                  {(() => {
-                    const hour = gridEndHour;
-                    if (hour === 0 || hour === 24) return '12 AM';
-                    if (hour === 12) return '12 PM';
-                    return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
-                  })()}
-                </div>
               </div>
             </div>
 
@@ -690,7 +684,7 @@ export const BookingsCalendar: React.FC = () => {
                     </div>
 
                     {/* Grid Hours cells */}
-                    <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))`, gridAutoRows: 'minmax(80px, auto)', paddingRight: '32px' }}>
+                    <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))`, gridAutoRows: 'minmax(80px, auto)' }}>
                       {/* Render background cells */}
                       {Array.from({ length: totalSlotsCount }).map((_, i) => {
                         const slotHour = gridStartHour + Math.floor(i / slotsPerHour);
@@ -807,7 +801,6 @@ export const BookingsCalendar: React.FC = () => {
               })
             )}
           </div>
-        </div>
       </div>
 
       {/* CREATE BOOKING MODAL */}
