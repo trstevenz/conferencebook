@@ -635,10 +635,14 @@ export const BookingsCalendar: React.FC = () => {
     return `${labelHour}:00 ${ampm}`;
   };
 
+  const isSuperUser = user?.role === 'SUPER_USER';
+
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className={`animate-fadeIn ${isSuperUser ? 'flex flex-col h-[calc(100vh-64px)] space-y-4' : 'space-y-6'}`}>
       {/* Date Header Controller */}
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm">
+      <div className={`flex flex-col sm:flex-row justify-between items-center gap-4 bg-white dark:bg-slate-900 p-5 rounded-2xl border dark:border-slate-800 shadow-sm ${
+        isSuperUser ? 'mx-6 mt-6' : ''
+      }`}>
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-3">
             <button onClick={handlePrevDay} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
@@ -689,8 +693,218 @@ export const BookingsCalendar: React.FC = () => {
       </div>
 
       {/* Grid Timeline scheduler */}
-      <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl overflow-x-auto shadow-sm">
-        <div className="divide-y dark:divide-slate-800" style={{ minWidth: `${224 + totalSlotsCount * 35}px` }}>
+      {isSuperUser ? (
+        <div className="flex-1 bg-white dark:bg-slate-900 border-t dark:border-slate-800 overflow-auto shadow-sm">
+          {/* Vertical Calendar View */}
+          <div 
+            className="relative grid" 
+            style={{ 
+              gridTemplateColumns: `80px repeat(${filteredRooms.length}, minmax(180px, 1fr))`,
+              gridTemplateRows: `60px repeat(${totalSlotsCount}, 40px)`,
+              minWidth: `${80 + filteredRooms.length * 180}px`
+            }}
+          >
+            {/* Corner header */}
+            <div className="sticky top-0 left-0 bg-slate-50 dark:bg-slate-800 border-r border-b dark:border-slate-700 flex items-center justify-center font-bold text-xs text-slate-400 z-30 h-full">
+              Time
+            </div>
+
+            {/* Room Headers */}
+            {filteredRooms.map((room, roomIdx) => (
+              <div 
+                key={room.id}
+                className="sticky top-0 bg-slate-50 dark:bg-slate-800 border-r border-b dark:border-slate-700 flex flex-col justify-center px-4 py-2 z-20 h-full"
+                style={{ gridColumn: roomIdx + 2, gridRow: 1 }}
+              >
+                <span className="font-bold text-sm leading-tight text-slate-700 dark:text-slate-200 truncate">{room.name}</span>
+                <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wide">
+                  Floor {room.floor}
+                </span>
+              </div>
+            ))}
+
+            {/* Vertical Time Labels Column */}
+            {Array.from({ length: totalSlotsCount }).map((_, i) => {
+              const slotHour = gridStartHour + Math.floor(i / slotsPerHour);
+              const minutes = (i % slotsPerHour) * calendarInterval;
+              const ampm = slotHour >= 12 ? 'PM' : 'AM';
+              const displayHour = slotHour % 12 === 0 ? 12 : slotHour % 12;
+              const timeLabel = minutes === 0 
+                ? `${displayHour}:00 ${ampm}` 
+                : `${displayHour}:${minutes < 10 ? '0' + minutes : minutes} ${ampm}`;
+              
+              const isHourStart = minutes === 0;
+
+              return (
+                <div 
+                  key={`time-${i}`}
+                  className={`sticky left-0 bg-slate-50 dark:bg-slate-800 border-r border-b dark:border-slate-700 flex items-center justify-center font-outfit text-slate-400 z-10 h-full text-[10px] ${
+                    isHourStart ? 'font-bold' : 'opacity-60'
+                  }`}
+                  style={{ gridColumn: 1, gridRow: i + 2 }}
+                >
+                  {timeLabel}
+                </div>
+              );
+            })}
+
+            {/* Background cells for rooms */}
+            {isLoading ? (
+              <div className="col-span-full row-span-full flex items-center justify-center py-20 z-10">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+              </div>
+            ) : filteredRooms.length === 0 ? (
+              <div className="col-span-full row-span-full p-10 text-center text-slate-500 text-sm z-10">
+                No rooms found.
+              </div>
+            ) : (
+              filteredRooms.map((room, roomIdx) => {
+                const roomBookings = bookings.filter(b => 
+                  b.room.id === room.id && 
+                  b.status !== 'CANCELLED' && 
+                  b.status !== 'REJECTED' &&
+                  isBookingOnSelectedDate(b)
+                );
+
+                return (
+                  <React.Fragment key={`room-col-${room.id}`}>
+                    {/* Background cells */}
+                    {Array.from({ length: totalSlotsCount }).map((_, i) => {
+                      const slotHour = gridStartHour + Math.floor(i / slotsPerHour);
+                      const roomStart = room.availableStartHour ?? 8;
+                      const roomEnd = room.availableEndHour ?? 18;
+                      const isOutsideHours = slotHour < roomStart || slotHour >= roomEnd;
+
+                      const isSelected = isDragging &&
+                        dragRoomId === room.id &&
+                        dragStartSlot !== null &&
+                        dragEndSlot !== null &&
+                        i >= Math.min(dragStartSlot, dragEndSlot) &&
+                        i <= Math.max(dragStartSlot, dragEndSlot);
+
+                      return (
+                        <div
+                          key={`cell-${room.id}-${i}`}
+                          onMouseDown={(e) => {
+                            if (isOutsideHours) return;
+                            if (e.button === 0 || e.button === 2) {
+                              e.preventDefault();
+                              setDragStartSlot(i);
+                              setDragEndSlot(i);
+                              setDragRoomId(room.id);
+                              setIsDragging(true);
+                            }
+                          }}
+                          onMouseEnter={() => {
+                            if (isOutsideHours) return;
+                            if (isDragging && dragRoomId === room.id) {
+                              setDragEndSlot(i);
+                            }
+                          }}
+                          onContextMenu={(e) => {
+                            e.preventDefault();
+                          }}
+                          title={isOutsideHours 
+                            ? `${room.name} is unavailable (Available: ${roomStart % 12 || 12} ${roomStart >= 12 ? 'PM' : 'AM'} - ${roomEnd % 12 || 12} ${roomEnd >= 12 ? 'PM' : 'AM'})`
+                            : `Drag or click to book starting at ${formatSlotLabel(i)} in ${room.name}`
+                          }
+                          className={`flex items-center justify-center transition-all group border-r border-b dark:border-slate-800 ${
+                            isOutsideHours
+                              ? 'stripes-bg cursor-not-allowed'
+                              : isSelected
+                              ? 'bg-primary-500/35 dark:bg-primary-600/40 border-x border-primary-500/50 cursor-pointer'
+                              : 'hover:bg-slate-100 dark:hover:bg-slate-800/10 cursor-pointer'
+                          }`}
+                          style={{ gridColumn: roomIdx + 2, gridRow: i + 2 }}
+                        >
+                          {!isOutsideHours && (
+                            <Plus className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {/* Bookings */}
+                    {roomBookings.map(b => {
+                      const startRow = getSlotIndex(b.startTime) + 2;
+                      const endRow = getSlotIndex(b.endTime) + 2;
+                      const durationSlots = endRow - startRow;
+                      const isPending = b.status === 'PENDING';
+                      
+                      const formatTime = (isoStr: string) => {
+                        const date = new Date(isoStr);
+                        let h = date.getHours();
+                        const m = date.getMinutes();
+                        const ampm = h >= 12 ? 'PM' : 'AM';
+                        h = h % 12;
+                        h = h ? h : 12;
+                        const mStr = m < 10 ? '0' + m : m;
+                        return `${h}:${mStr} ${ampm}`;
+                      };
+                      
+                      const formattedStart = formatTime(b.startTime);
+                      const formattedEnd = formatTime(b.endTime);
+
+                      return (
+                        <div
+                          key={`booking-${b.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenDetails(b);
+                          }}
+                          className="p-1 cursor-pointer transition-all w-[calc(100%-8px)] mx-auto"
+                          style={{
+                            gridColumn: roomIdx + 2,
+                            gridRowStart: startRow,
+                            gridRowEnd: endRow,
+                            zIndex: 10
+                          }}
+                        >
+                          <div className={`w-full h-full rounded-xl text-center flex flex-col justify-center items-center border select-none transition-all hover:scale-[1.01] hover:shadow-md overflow-hidden ${
+                            isPending
+                              ? 'bg-amber-50 border-amber-300 text-amber-950 dark:bg-amber-950 dark:border-amber-800 dark:text-amber-100'
+                              : 'bg-orange-50 border-orange-300 text-orange-950 dark:bg-orange-950 dark:border-orange-800 dark:text-orange-100'
+                          }`}>
+                            {durationSlots === 1 ? (
+                              <div className="flex flex-row items-center justify-between gap-2 w-full h-full px-3 py-1">
+                                <span className="font-bold text-xs truncate text-left flex-1" title={b.title}>{b.title}</span>
+                                <span className="text-[10px] font-bold text-orange-700 dark:text-orange-400 whitespace-nowrap">
+                                  {formattedStart} - {formattedEnd}
+                                </span>
+                              </div>
+                            ) : durationSlots === 2 ? (
+                              <div className="flex flex-col justify-center items-center gap-0.5 w-full h-full px-2 py-1">
+                                <span className="font-bold text-xs md:text-sm truncate max-w-full leading-tight" title={b.title}>{b.title}</span>
+                                <div className="flex items-center gap-1.5 text-[10px] text-slate-600 dark:text-slate-400 truncate w-full justify-center font-medium">
+                                  <span className="truncate">{b.user.fullName}</span>
+                                  <span className="text-slate-300 dark:text-slate-700">|</span>
+                                  <span className="font-bold text-orange-700 dark:text-orange-400 whitespace-nowrap">{formattedStart} - {formattedEnd}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex flex-col justify-center items-center gap-2 w-full h-full p-3">
+                                <span className="font-bold text-sm md:text-base leading-snug break-words max-w-full">{b.title}</span>
+                                <span className="text-xs md:text-sm text-slate-600 dark:text-slate-400 font-semibold truncate w-full">
+                                  {b.user.fullName}
+                                </span>
+                                <span className="text-xs md:text-sm font-bold text-orange-700 dark:text-orange-400 tracking-wider">
+                                  {formattedStart} - {formattedEnd}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              })
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl overflow-x-auto shadow-sm">
+          <div className="divide-y dark:divide-slate-800" style={{ minWidth: `${224 + totalSlotsCount * 35}px` }}>
             {/* Timeline Hours Header */}
             <div className="flex bg-slate-50 dark:bg-slate-800 text-slate-400 font-semibold text-xs h-12">
               <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex items-center font-outfit">Rooms</div>
@@ -869,6 +1083,7 @@ export const BookingsCalendar: React.FC = () => {
             )}
           </div>
       </div>
+      )}
 
       {/* CREATE BOOKING MODAL */}
       {isCreateModalOpen && (

@@ -59,13 +59,10 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const unreadNotifs = notifications.filter(n => !n.readStatus);
 
-  const handleSendAIMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!aiMessage.trim()) return;
+  const submitAIMessage = async (userText: string) => {
+    if (!userText.trim()) return;
 
-    const userText = aiMessage;
     setChatHistory(prev => [...prev, { sender: 'user', text: userText }]);
-    setAiMessage('');
     setIsAiLoading(true);
 
     try {
@@ -84,6 +81,15 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
     } finally {
       setIsAiLoading(false);
     }
+  };
+
+  const handleSendAIMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!aiMessage.trim()) return;
+
+    const userText = aiMessage;
+    setAiMessage('');
+    await submitAIMessage(userText);
   };
 
   const handleConfirmAIBooking = async (proposal: any) => {
@@ -259,23 +265,23 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* Content Body */}
-        <main className={`flex-1 overflow-y-auto relative ${user.role === 'SUPER_USER' ? 'p-0' : 'p-8'}`}>
+        <main className={`flex-1 relative ${user.role === 'SUPER_USER' ? 'p-0 overflow-hidden' : 'p-8 overflow-y-auto'}`}>
           {children}
         </main>
       </div>
 
       {/* Floating AI Chat Trigger */}
-      {user.role !== 'SUPER_USER' && (
+      {
         <button
           onClick={() => setIsAIChatOpen(true)}
           className="fixed bottom-6 right-6 h-14 w-14 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-2xl shadow-primary-500/30 flex items-center justify-center hover:scale-105 transition-all z-40"
         >
           <Bot className="h-6 w-6" />
         </button>
-      )}
+      }
 
       {/* AI Assistant Chat Drawer */}
-      {isAIChatOpen && user.role !== 'SUPER_USER' && (
+      {isAIChatOpen && (
         <>
           {/* Backdrop */}
           <div onClick={() => setIsAIChatOpen(false)} className="fixed inset-0 bg-black/40 backdrop-blur-xs z-40" />
@@ -332,6 +338,40 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Suggested Questions */}
+            <div className={`px-4 py-3 border-t dark:border-slate-700 ${theme === 'dark' ? 'bg-[#1e293b]/40' : 'bg-slate-50/50'}`}>
+              <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">Suggested Actions</p>
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => submitAIMessage("Book a room for 5 people tomorrow at 3 PM")}
+                  disabled={isAiLoading}
+                  className="w-full text-left text-xs font-semibold px-3 py-2 rounded-xl border dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-primary-500 dark:hover:border-primary-500 hover:text-primary-600 transition-all flex items-center justify-between group"
+                >
+                  <span>📅 Book a room for 5 people tomorrow at 3 PM</span>
+                  <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-all text-primary-500" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => submitAIMessage("Which rooms are free now?")}
+                  disabled={isAiLoading}
+                  className="w-full text-left text-xs font-semibold px-3 py-2 rounded-xl border dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-primary-500 dark:hover:border-primary-500 hover:text-primary-600 transition-all flex items-center justify-between group"
+                >
+                  <span>🔍 Check room availability (Free Now)</span>
+                  <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-all text-primary-500" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => submitAIMessage("Help")}
+                  disabled={isAiLoading}
+                  className="w-full text-left text-xs font-semibold px-3 py-2 rounded-xl border dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:border-primary-500 dark:hover:border-primary-500 hover:text-primary-600 transition-all flex items-center justify-between group"
+                >
+                  <span>ℹ️ Help & booking guide</span>
+                  <ChevronRight className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-all text-primary-500" />
+                </button>
+              </div>
             </div>
 
             {/* Input form */}
