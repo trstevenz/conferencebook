@@ -41,7 +41,7 @@ interface Booking {
 }
 
 export const BookingsCalendar: React.FC = () => {
-  const { user, apiCall, theme, calendarInterval, calendarStartHour, calendarEndHour } = useAuth();
+  const { user, apiCall, theme, calendarInterval, calendarStartHour, calendarEndHour, maxMeetingDuration } = useAuth();
   
   // Date selector
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -69,6 +69,7 @@ export const BookingsCalendar: React.FC = () => {
   const [bookingRecurrence, setBookingRecurrence] = useState('');
   const [bookingRecurrenceCount, setBookingRecurrenceCount] = useState<number>(1);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
+  const [bookingParticipantsText, setBookingParticipantsText] = useState('');
   const [isRoomLocked, setIsRoomLocked] = useState(false);
 
   // Edit Booking states
@@ -79,6 +80,7 @@ export const BookingsCalendar: React.FC = () => {
   const [editStartSlot, setEditStartSlot] = useState<number>(0);
   const [editEndSlot, setEditEndSlot] = useState<number>(1);
   const [editParticipantIds, setEditParticipantIds] = useState<number[]>([]);
+  const [editParticipantsText, setEditParticipantsText] = useState('');
   const [editRecurrence, setEditRecurrence] = useState('');
   const [editRecurrenceCount, setEditRecurrenceCount] = useState<number>(1);
 
@@ -212,11 +214,29 @@ export const BookingsCalendar: React.FC = () => {
     return null;
   };
 
+  const resolveParticipantIds = (text: string) => {
+    if (!text.trim()) return [];
+    const entries = text.split(/[\n,]+/).map(e => e.trim().toLowerCase()).filter(Boolean);
+    const matchedIds: number[] = [];
+    
+    entries.forEach(entry => {
+      const matched = usersList.find(u => 
+        u.username.toLowerCase() === entry || 
+        u.fullName.toLowerCase() === entry
+      );
+      if (matched && !matchedIds.includes(matched.id)) {
+        matchedIds.push(matched.id);
+      }
+    });
+    return matchedIds;
+  };
+
   const handleOpenCreateModal = (roomId?: number, startSlotIndex?: number, endSlotIndex?: number) => {
     setErrorMessage(null);
     setBookingTitle('');
     setBookingDesc('');
     setSelectedParticipantIds([]);
+    setBookingParticipantsText('');
     setBookingRecurrence('');
     setBookingRecurrenceCount(1);
 
@@ -269,7 +289,7 @@ export const BookingsCalendar: React.FC = () => {
       endTime: getISOStringForSlot(selectedDate, bookingEndSlot),
       title: bookingTitle,
       description: bookingDesc,
-      participantIds: selectedParticipantIds,
+      participantIds: resolveParticipantIds(bookingParticipantsText),
       recurrencePattern: bookingRecurrence || null,
       recurrenceCount: bookingRecurrence ? bookingRecurrenceCount : null
     };
@@ -301,6 +321,7 @@ export const BookingsCalendar: React.FC = () => {
     setEditEndSlot(endIdx);
 
     setEditParticipantIds(booking.participants.map(p => p.id));
+    setEditParticipantsText(booking.participants.map(p => p.username).join(', '));
     setEditRecurrence(booking.recurringPattern || '');
     setEditRecurrenceCount(1);
 
@@ -319,7 +340,7 @@ export const BookingsCalendar: React.FC = () => {
       endTime: getISOStringForSlot(selectedDate, editEndSlot),
       title: editTitle,
       description: editDesc,
-      participantIds: editParticipantIds,
+      participantIds: resolveParticipantIds(editParticipantsText),
       recurrencePattern: editRecurrence || null,
       recurrenceCount: editRecurrence ? editRecurrenceCount : null
     };
@@ -485,7 +506,7 @@ export const BookingsCalendar: React.FC = () => {
                     <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex flex-col justify-center bg-slate-50/50 dark:bg-slate-900/50">
                       <span className="font-bold text-sm leading-tight text-slate-700 dark:text-slate-200">{room.name}</span>
                       <span className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-wide">
-                        Cap: {room.capacity} seats • Floor {room.floor}
+                        Floor {room.floor}
                       </span>
                     </div>
 
@@ -651,7 +672,7 @@ export const BookingsCalendar: React.FC = () => {
                     } ${isRoomLocked ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
                   >
                     {rooms.map(r => (
-                      <option key={r.id} value={r.id}>{r.name} (Cap: {r.capacity})</option>
+                      <option key={r.id} value={r.id}>{r.name}</option>
                     ))}
                   </select>
                 </div>
@@ -712,11 +733,12 @@ export const BookingsCalendar: React.FC = () => {
                     {Array.from({ length: totalSlotsCount }).map((_, idx) => {
                       const i = idx + 1; // End slots are 1-indexed to totalSlotsCount
                       const nextBooked = getFirstBookedSlotAfter(bookingRoomId, bookingStartSlot);
-                      const isOptionDisabled = i <= bookingStartSlot || (nextBooked !== null && i > nextBooked);
+                      const durationMins = (i - bookingStartSlot) * calendarInterval;
+                      const isOptionDisabled = i <= bookingStartSlot || (nextBooked !== null && i > nextBooked) || durationMins > maxMeetingDuration;
                       
                       return (
                         <option key={i} value={i} disabled={isOptionDisabled}>
-                          {formatSlotLabel(i)}
+                          {formatSlotLabel(i)} {durationMins > maxMeetingDuration ? '(Exceeds Max Duration)' : ''}
                         </option>
                       );
                     })}
@@ -739,28 +761,18 @@ export const BookingsCalendar: React.FC = () => {
                 </div>
               </div>
 
-              {/* Participants Selection */}
+              {/* Participants Selection Text Area */}
               <div>
-                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Select Participants</label>
-                <div className={`max-h-24 overflow-y-auto border p-3 rounded-2xl space-y-2 ${
-                  theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700' : 'bg-slate-50 border-slate-200'
-                }`}>
-                  {usersList.length === 0 ? (
-                    <p className="text-xs text-slate-400">No other employees available.</p>
-                  ) : (
-                    usersList.map(u => (
-                      <label key={u.id} className="flex items-center gap-2 cursor-pointer select-none text-xs">
-                        <input
-                          type="checkbox"
-                          checked={selectedParticipantIds.includes(u.id)}
-                          onChange={() => toggleParticipant(u.id)}
-                          className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                        />
-                        <span>{u.fullName} ({u.username})</span>
-                      </label>
-                    ))
-                  )}
-                </div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Participants (Usernames separated by commas)</label>
+                <textarea
+                  value={bookingParticipantsText}
+                  onChange={e => setBookingParticipantsText(e.target.value)}
+                  placeholder="E.g. employee, manager"
+                  rows={2}
+                  className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                    theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                  }`}
+                />
               </div>
 
               {/* Description */}
@@ -859,7 +871,7 @@ export const BookingsCalendar: React.FC = () => {
                       }`}
                     >
                       {rooms.map(r => (
-                        <option key={r.id} value={r.id}>{r.name} (Cap: {r.capacity})</option>
+                        <option key={r.id} value={r.id}>{r.name}</option>
                       ))}
                     </select>
                   </div>
@@ -920,11 +932,12 @@ export const BookingsCalendar: React.FC = () => {
                       {Array.from({ length: totalSlotsCount }).map((_, idx) => {
                         const i = idx + 1;
                         const nextBooked = getFirstBookedSlotAfter(editRoomId, editStartSlot, selectedBooking.id);
-                        const isOptionDisabled = i <= editStartSlot || (nextBooked !== null && i > nextBooked);
+                        const durationMins = (i - editStartSlot) * calendarInterval;
+                        const isOptionDisabled = i <= editStartSlot || (nextBooked !== null && i > nextBooked) || durationMins > maxMeetingDuration;
                         
                         return (
                           <option key={i} value={i} disabled={isOptionDisabled}>
-                            {formatSlotLabel(i)}
+                            {formatSlotLabel(i)} {durationMins > maxMeetingDuration ? '(Exceeds Max Duration)' : ''}
                           </option>
                         );
                       })}
@@ -947,28 +960,18 @@ export const BookingsCalendar: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Participants */}
+                {/* Participants Text Area */}
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Select Participants</label>
-                  <div className={`max-h-24 overflow-y-auto border p-3 rounded-2xl space-y-2 ${
-                    theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700' : 'bg-slate-50 border-slate-200'
-                  }`}>
-                    {usersList.length === 0 ? (
-                      <p className="text-xs text-slate-400">No other employees available.</p>
-                    ) : (
-                      usersList.map(u => (
-                        <label key={u.id} className="flex items-center gap-2 cursor-pointer select-none text-xs">
-                          <input
-                            type="checkbox"
-                            checked={editParticipantIds.includes(u.id)}
-                            onChange={() => toggleEditParticipant(u.id)}
-                            className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
-                          />
-                          <span>{u.fullName} ({u.username})</span>
-                        </label>
-                      ))
-                    )}
-                  </div>
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Participants (Usernames separated by commas)</label>
+                  <textarea
+                    value={editParticipantsText}
+                    onChange={e => setEditParticipantsText(e.target.value)}
+                    placeholder="E.g. employee, manager"
+                    rows={2}
+                    className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                      theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                    }`}
+                  />
                 </div>
 
                 {/* Notes */}

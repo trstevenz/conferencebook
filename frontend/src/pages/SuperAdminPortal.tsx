@@ -22,7 +22,7 @@ interface AuditLog {
 }
 
 export const SuperAdminPortal: React.FC = () => {
-  const { apiCall, theme, calendarInterval, calendarStartHour, calendarEndHour, updateCalendarSettings } = useAuth();
+  const { apiCall, theme, calendarInterval, calendarStartHour, calendarEndHour, checkinGracePeriod, maxMeetingDuration, updateCalendarSettings } = useAuth();
 
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -36,6 +36,8 @@ export const SuperAdminPortal: React.FC = () => {
   const [inputInterval, setInputInterval] = useState<number>(calendarInterval);
   const [inputStartHour, setInputStartHour] = useState<number>(calendarStartHour);
   const [inputEndHour, setInputEndHour] = useState<number>(calendarEndHour);
+  const [inputGracePeriod, setInputGracePeriod] = useState<number>(checkinGracePeriod);
+  const [inputMaxDuration, setInputMaxDuration] = useState<number>(maxMeetingDuration);
 
   useEffect(() => {
     fetchData();
@@ -103,7 +105,7 @@ export const SuperAdminPortal: React.FC = () => {
       return;
     }
 
-    updateCalendarSettings(inputInterval, inputStartHour, inputEndHour);
+    updateCalendarSettings(inputInterval, inputStartHour, inputEndHour, inputGracePeriod, inputMaxDuration);
     setSuccessMessage('Calendar scheduler settings updated successfully!');
   };
 
@@ -325,6 +327,47 @@ export const SuperAdminPortal: React.FC = () => {
                   {Array.from({ length: 24 }).map((_, h) => (
                     <option key={h} value={h}>{formatHourLabel(h)}</option>
                   ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {/* Check-In Grace Period */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Check-In Grace Period</label>
+                <select
+                  value={inputGracePeriod}
+                  onChange={e => setInputGracePeriod(Number(e.target.value))}
+                  className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                    theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                  }`}
+                >
+                  <option value={5}>5 Minutes</option>
+                  <option value={10}>10 Minutes</option>
+                  <option value={15}>15 Minutes</option>
+                  <option value={20}>20 Minutes</option>
+                  <option value={30}>30 Minutes</option>
+                </select>
+              </div>
+
+              {/* Max Meeting Duration */}
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Max Meeting Duration</label>
+                <select
+                  value={inputMaxDuration}
+                  onChange={e => setInputMaxDuration(Number(e.target.value))}
+                  className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                    theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                  }`}
+                >
+                  <option value={30}>30 Minutes</option>
+                  <option value={60}>60 Minutes (1 Hour)</option>
+                  <option value={90}>90 Minutes (1.5 Hours)</option>
+                  <option value={120}>120 Minutes (2 Hours)</option>
+                  <option value={180}>180 Minutes (3 Hours)</option>
+                  <option value={240}>240 Minutes (4 Hours)</option>
+                  <option value={480}>480 Minutes (8 Hours)</option>
+                  <option value={1440}>No Limit (1 Day)</option>
                 </select>
               </div>
             </div>

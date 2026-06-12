@@ -32,7 +32,9 @@ interface AuthContextType {
   calendarInterval: number;
   calendarStartHour: number;
   calendarEndHour: number;
-  updateCalendarSettings: (interval: number, startHour: number, endHour: number) => void;
+  checkinGracePeriod: number;
+  maxMeetingDuration: number;
+  updateCalendarSettings: (interval: number, startHour: number, endHour: number, checkinGracePeriod: number, maxMeetingDuration: number) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -56,14 +58,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const saved = localStorage.getItem('calendarEndHour');
     return saved ? Number(saved) : 18;
   });
+  const [checkinGracePeriod, setCheckinGracePeriod] = useState<number>(() => {
+    const saved = localStorage.getItem('checkinGracePeriod');
+    return saved ? Number(saved) : 15;
+  });
+  const [maxMeetingDuration, setMaxMeetingDuration] = useState<number>(() => {
+    const saved = localStorage.getItem('maxMeetingDuration');
+    return saved ? Number(saved) : 120;
+  });
 
-  const updateCalendarSettings = (interval: number, startHour: number, endHour: number) => {
+  const updateCalendarSettings = (interval: number, startHour: number, endHour: number, gracePeriod: number, maxDuration: number) => {
     setCalendarInterval(interval);
     setCalendarStartHour(startHour);
     setCalendarEndHour(endHour);
+    setCheckinGracePeriod(gracePeriod);
+    setMaxMeetingDuration(maxDuration);
     localStorage.setItem('calendarInterval', String(interval));
     localStorage.setItem('calendarStartHour', String(startHour));
     localStorage.setItem('calendarEndHour', String(endHour));
+    localStorage.setItem('checkinGracePeriod', String(gracePeriod));
+    localStorage.setItem('maxMeetingDuration', String(maxDuration));
   };
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -174,6 +188,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       calendarInterval,
       calendarStartHour,
       calendarEndHour,
+      checkinGracePeriod,
+      maxMeetingDuration,
       updateCalendarSettings
     }}>
       {children}

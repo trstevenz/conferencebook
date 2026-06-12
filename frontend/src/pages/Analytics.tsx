@@ -135,7 +135,7 @@ export const Analytics: React.FC = () => {
                   {/* Bar */}
                   <div
                     style={{ height: `${heightPercent}%` }}
-                    className="w-8 bg-gradient-to-t from-primary-600 to-blue-800 rounded-t-lg group-hover:brightness-105 transition-all shadow-md shadow-primary-500/10"
+                    className="w-8 bg-gradient-to-t from-primary-600 to-primary-400 rounded-t-lg group-hover:brightness-105 transition-all shadow-md shadow-primary-500/10"
                   />
                   {/* Label */}
                   <span className="text-[9px] text-slate-400 font-semibold mt-2 truncate w-14 text-center">
@@ -168,7 +168,7 @@ export const Analytics: React.FC = () => {
                     <div className="h-2.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                       <div
                         style={{ width: `${widthPercent}%` }}
-                        className="h-full bg-gradient-to-r from-primary-500 to-blue-800 rounded-full"
+                        className="h-full bg-gradient-to-r from-primary-500 to-primary-300 rounded-full"
                       />
                     </div>
                   </div>

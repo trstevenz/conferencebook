@@ -51,10 +51,10 @@ export const Login: React.FC = () => {
 
       <div className="w-full max-w-md glass-panel rounded-3xl shadow-2xl p-8 z-10 transition-all border border-slate-200/60 dark:border-slate-800">
         <div className="text-center mb-8">
-          <div className="mx-auto h-12 w-12 rounded-2xl bg-gradient-to-tr from-primary-600 to-blue-900 text-white flex items-center justify-center shadow-lg shadow-primary-500/20">
+          <div className="mx-auto h-12 w-12 rounded-2xl bg-primary-600 text-white flex items-center justify-center shadow-lg shadow-primary-500/20">
             <Bot className="h-6 w-6" />
           </div>
-          <h2 className="text-2xl font-bold font-outfit mt-4 bg-gradient-to-r from-primary-600 to-blue-900 bg-clip-text text-transparent">
+          <h2 className="text-2xl font-bold font-outfit mt-4 text-primary-600">
             Smart Room Booker
           </h2>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-2 leading-relaxed">
@@ -109,7 +109,7 @@ export const Login: React.FC = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-primary-600 to-blue-900 hover:opacity-95 text-white text-sm font-semibold transition-all shadow-lg shadow-primary-500/25 flex items-center justify-center gap-2"
+            className="w-full py-3.5 rounded-2xl bg-primary-600 hover:bg-primary-700 text-white text-sm font-semibold transition-all shadow-lg shadow-primary-500/25 flex items-center justify-center gap-2"
           >
             {isLoading ? 'Signing In...' : 'Sign In'}
           </button>

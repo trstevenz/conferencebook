@@ -249,12 +249,9 @@ export const Dashboard: React.FC = () => {
                 <div>
                   <div className="flex justify-between items-start">
                     <h4 className="font-bold text-sm">{room.name}</h4>
-                    <span className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-mono text-slate-500">
-                      {room.code}
-                    </span>
                   </div>
                   <p className="text-xs text-slate-400 mt-1">
-                    Building {room.building} • Capacity: {room.capacity} seats
+                    Building {room.building} (Floor {room.floor || 1})
                   </p>
                   <p className="text-xs text-slate-500 mt-2 line-clamp-2 leading-relaxed">
                     {room.description || 'No description provided.'}

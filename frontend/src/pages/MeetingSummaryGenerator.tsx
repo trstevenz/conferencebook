@@ -81,7 +81,7 @@ John: Excellent. Decision is made: SQLite for initial phase. David will write JP
             <button
               type="submit"
               disabled={isLoading || !transcript.trim()}
-              className="w-full py-3.5 bg-gradient-to-tr from-primary-600 to-blue-800 hover:opacity-95 text-white text-xs font-semibold rounded-2xl shadow-lg shadow-primary-500/25 flex items-center justify-center gap-2"
+              className="w-full py-3.5 bg-primary-600 hover:bg-primary-700 text-white text-xs font-semibold rounded-2xl shadow-lg shadow-primary-500/25 flex items-center justify-center gap-2"
             >
               <Sparkles className="h-4 w-4" />
               {isLoading ? 'Summarizing...' : 'Extract Key Summary'}

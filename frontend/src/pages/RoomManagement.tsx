@@ -103,12 +103,13 @@ export const RoomManagement: React.FC = () => {
     setErrorMessage(null);
     setSuccessMessage(null);
 
+    const generatedCode = code || (name.replace(/\s+/g, '-').toUpperCase() + '-' + Math.floor(Math.random() * 10000));
     const payload = {
       name,
-      code,
+      code: generatedCode,
       building,
       floor,
-      capacity,
+      capacity: capacity || 10,
       description,
       status,
       amenities: selectedAmenities.join(',')
@@ -205,9 +206,8 @@ export const RoomManagement: React.FC = () => {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/40 border-b dark:border-slate-800 text-xs text-slate-400 font-semibold h-12">
-                  <th className="p-4 pl-6">Room Name / Code</th>
+                  <th className="p-4 pl-6">Room Name</th>
                   <th className="p-4">Location</th>
-                  <th className="p-4">Capacity</th>
                   <th className="p-4">Amenities</th>
                   <th className="p-4">Status</th>
                   <th className="p-4 pr-6 text-right">Actions</th>
@@ -216,20 +216,14 @@ export const RoomManagement: React.FC = () => {
               <tbody className="divide-y dark:divide-slate-800 text-sm">
                 {rooms.map(room => (
                   <tr key={room.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                    {/* Name/Code */}
+                    {/* Name */}
                     <td className="p-4 pl-6">
                       <p className="font-bold">{room.name}</p>
-                      <span className="text-xs text-slate-400 font-mono mt-0.5 block">{room.code}</span>
                     </td>
 
                     {/* Location */}
                     <td className="p-4 text-xs text-slate-500 dark:text-slate-400">
                       {room.building} (Floor {room.floor})
-                    </td>
-
-                    {/* Capacity */}
-                    <td className="p-4 font-semibold text-xs">
-                      {room.capacity} seats
                     </td>
 
                     {/* Amenities */}
@@ -289,36 +283,21 @@ export const RoomManagement: React.FC = () => {
             </h4>
 
             <form onSubmit={handleSaveRoom} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Room Name</label>
-                  <input
-                    type="text"
-                    required
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="E.g., Sky Lounge"
-                    className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
-                      theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
-                    }`}
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Room Code</label>
-                  <input
-                    type="text"
-                    required
-                    value={code}
-                    onChange={e => setCode(e.target.value)}
-                    placeholder="E.g., SL-4"
-                    className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
-                      theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
-                    }`}
-                  />
-                </div>
+              <div>
+                <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Room Name</label>
+                <input
+                  type="text"
+                  required
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder="E.g., Sky Lounge"
+                  className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                    theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                  }`}
+                />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Building</label>
                   <input
@@ -344,18 +323,6 @@ export const RoomManagement: React.FC = () => {
                     }`}
                   />
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Max Capacity</label>
-                  <input
-                    type="number"
-                    required
-                    value={capacity}
-                    onChange={e => setCapacity(Number(e.target.value))}
-                    className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
-                      theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
-                    }`}
-                  />
-                </div>
               </div>
 
               <div>
@@ -363,7 +330,7 @@ export const RoomManagement: React.FC = () => {
                 <textarea
                   value={description}
                   onChange={e => setDescription(e.target.value)}
-                  placeholder="Details about capacity and purpose..."
+                  placeholder="Details about the room location and amenities..."
                   rows={2}
                   className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
                     theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
