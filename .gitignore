@@ -1,0 +1,20 @@
+# Maven
+backend/target/
+backend/*.db
+backend/*.log
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDEs and OS
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
