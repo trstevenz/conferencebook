@@ -47,3 +47,27 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(156, 163, 175, 0.8);
 }
+
+/* Diagonal Stripes for Unavailable Hours */
+.stripes-bg {
+  background-color: #f8fafc;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #f1f5f9,
+    #f1f5f9 6px,
+    #f8fafc 6px,
+    #f8fafc 12px
+  );
+}
+
+.dark .stripes-bg {
+  background-color: #0f172a;
+  background-image: repeating-linear-gradient(
+    -45deg,
+    #1e293b/30,
+    #1e293b/30 6px,
+    #0f172a 6px,
+    #0f172a 12px
+  );
+}
+

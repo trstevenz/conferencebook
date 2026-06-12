@@ -289,6 +289,28 @@ public class BookingService {
             throw new BookingException("Booking cannot be scheduled in the past.");
         }
 
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new BookingException("Room not found"));
+
+        int startHour = start.getHour();
+        int startMinute = start.getMinute();
+        int endHour = end.getHour();
+        int endMinute = end.getMinute();
+
+        int roomStart = room.getAvailableStartHour();
+        int roomEnd = room.getAvailableEndHour();
+
+        // Validate available hours
+        if (startHour < roomStart || endHour > roomEnd || (endHour == roomEnd && endMinute > 0)) {
+            String startLabel = roomStart > 12 ? (roomStart - 12) + ":00 PM" : roomStart + ":00 AM";
+            if (roomStart == 12) startLabel = "12:00 PM";
+            if (roomStart == 0) startLabel = "12:00 AM";
+            String endLabel = roomEnd > 12 ? (roomEnd - 12) + ":00 PM" : roomEnd + ":00 AM";
+            if (roomEnd == 12) endLabel = "12:00 PM";
+            if (roomEnd == 0) endLabel = "12:00 AM";
+            throw new BookingException("Booking time falls outside the room's operating hours (" + startLabel + " - " + endLabel + ").");
+        }
+
         // 1. Check for overlapping maintenance blocks
         List<MaintenanceSchedule> maint = maintenanceScheduleRepository.findOverlappingMaintenance(roomId, start, end);
         if (!maint.isEmpty()) {

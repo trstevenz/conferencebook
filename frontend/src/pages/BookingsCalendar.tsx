@@ -437,6 +437,12 @@ export const BookingsCalendar: React.FC = () => {
     return `${labelHour}:${labelMinute} ${ampm}`;
   };
 
+  const formatHourSimple = (h: number) => {
+    const labelHour = h > 12 ? h - 12 : h === 0 ? 12 : h;
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return `${labelHour}:00 ${ampm}`;
+  };
+
   return (
     <div className="space-y-6 animate-fadeIn">
       {/* Date Header Controller */}
@@ -511,6 +517,9 @@ export const BookingsCalendar: React.FC = () => {
                       <span className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-wide">
                         Floor {room.floor}
                       </span>
+                      <span className="text-[10px] text-primary-600 dark:text-primary-400 font-semibold mt-1">
+                        Hours: {formatHourSimple(room.availableStartHour ?? 8)} - {formatHourSimple(room.availableEndHour ?? 18)}
+                      </span>
                     </div>
 
                     {/* Grid Hours cells */}
@@ -518,8 +527,8 @@ export const BookingsCalendar: React.FC = () => {
                       {/* Render background cells */}
                       {Array.from({ length: totalSlotsCount }).map((_, i) => {
                         const slotHour = calendarStartHour + Math.floor(i / slotsPerHour);
-                        const roomStart = room.availableStartHour !== undefined ? room.availableStartHour : 8;
-                        const roomEnd = room.availableEndHour !== undefined ? room.availableEndHour : 18;
+                        const roomStart = room.availableStartHour ?? 8;
+                        const roomEnd = room.availableEndHour ?? 18;
                         const isOutsideHours = slotHour < roomStart || slotHour >= roomEnd;
 
                         const isSelected = isDragging &&
@@ -557,7 +566,7 @@ export const BookingsCalendar: React.FC = () => {
                             }
                             className={`border-r border-slate-100 dark:border-slate-800/40 flex items-center justify-center transition-all group ${
                               isOutsideHours
-                                ? 'bg-slate-100/50 dark:bg-slate-800/20 cursor-not-allowed'
+                                ? 'stripes-bg cursor-not-allowed border-slate-200/60 dark:border-slate-800/60'
                                 : isSelected
                                 ? 'bg-primary-500/35 dark:bg-primary-600/40 border-y border-primary-500/50 cursor-pointer'
                                 : 'hover:bg-slate-100 dark:hover:bg-slate-800/10 cursor-pointer'
@@ -729,8 +738,8 @@ export const BookingsCalendar: React.FC = () => {
                   >
                     {Array.from({ length: totalSlotsCount }).map((_, i) => {
                       const selectedRoomObj = rooms.find(r => r.id === bookingRoomId);
-                      const activeRoomStart = selectedRoomObj?.availableStartHour !== undefined ? selectedRoomObj.availableStartHour : 8;
-                      const activeRoomEnd = selectedRoomObj?.availableEndHour !== undefined ? selectedRoomObj.availableEndHour : 18;
+                      const activeRoomStart = selectedRoomObj?.availableStartHour ?? 8;
+                      const activeRoomEnd = selectedRoomObj?.availableEndHour ?? 18;
                       const slotHour = calendarStartHour + Math.floor(i / slotsPerHour);
                       const isOutsideHours = slotHour < activeRoomStart || slotHour >= activeRoomEnd;
 
@@ -757,9 +766,9 @@ export const BookingsCalendar: React.FC = () => {
                     {Array.from({ length: totalSlotsCount }).map((_, idx) => {
                       const i = idx + 1; // End slots are 1-indexed to totalSlotsCount
                       const selectedRoomObj = rooms.find(r => r.id === bookingRoomId);
-                      const activeRoomStart = selectedRoomObj?.availableStartHour !== undefined ? selectedRoomObj.availableStartHour : 8;
-                      const activeRoomEnd = selectedRoomObj?.availableEndHour !== undefined ? selectedRoomObj.availableEndHour : 18;
-                      const activeRoomMaxDuration = selectedRoomObj?.maxDuration !== undefined ? selectedRoomObj.maxDuration : maxMeetingDuration;
+                      const activeRoomStart = selectedRoomObj?.availableStartHour ?? 8;
+                      const activeRoomEnd = selectedRoomObj?.availableEndHour ?? 18;
+                      const activeRoomMaxDuration = selectedRoomObj?.maxDuration ?? maxMeetingDuration;
 
                       const slotHour = calendarStartHour + Math.floor((i - 1) / slotsPerHour);
                       const isOutsideHours = slotHour < activeRoomStart || slotHour >= activeRoomEnd;
@@ -943,8 +952,8 @@ export const BookingsCalendar: React.FC = () => {
                     >
                       {Array.from({ length: totalSlotsCount }).map((_, i) => {
                         const selectedRoomObj = rooms.find(r => r.id === editRoomId);
-                        const activeRoomStart = selectedRoomObj?.availableStartHour !== undefined ? selectedRoomObj.availableStartHour : 8;
-                        const activeRoomEnd = selectedRoomObj?.availableEndHour !== undefined ? selectedRoomObj.availableEndHour : 18;
+                        const activeRoomStart = selectedRoomObj?.availableStartHour ?? 8;
+                        const activeRoomEnd = selectedRoomObj?.availableEndHour ?? 18;
                         const slotHour = calendarStartHour + Math.floor(i / slotsPerHour);
                         const isOutsideHours = slotHour < activeRoomStart || slotHour >= activeRoomEnd;
 
@@ -971,9 +980,9 @@ export const BookingsCalendar: React.FC = () => {
                       {Array.from({ length: totalSlotsCount }).map((_, idx) => {
                         const i = idx + 1;
                         const selectedRoomObj = rooms.find(r => r.id === editRoomId);
-                        const activeRoomStart = selectedRoomObj?.availableStartHour !== undefined ? selectedRoomObj.availableStartHour : 8;
-                        const activeRoomEnd = selectedRoomObj?.availableEndHour !== undefined ? selectedRoomObj.availableEndHour : 18;
-                        const activeRoomMaxDuration = selectedRoomObj?.maxDuration !== undefined ? selectedRoomObj.maxDuration : maxMeetingDuration;
+                        const activeRoomStart = selectedRoomObj?.availableStartHour ?? 8;
+                        const activeRoomEnd = selectedRoomObj?.availableEndHour ?? 18;
+                        const activeRoomMaxDuration = selectedRoomObj?.maxDuration ?? maxMeetingDuration;
 
                         const slotHour = calendarStartHour + Math.floor((i - 1) / slotsPerHour);
                         const isOutsideHours = slotHour < activeRoomStart || slotHour >= activeRoomEnd;

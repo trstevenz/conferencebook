@@ -166,6 +166,21 @@ export const RoomManagement: React.FC = () => {
     }
   };
 
+  const formatHour = (h: number) => {
+    if (h === 0) return '12:00 AM';
+    if (h === 12) return '12:00 PM';
+    return h > 12 ? `${h - 12}:00 PM` : `${h}:00 AM`;
+  };
+
+  const formatDuration = (mins: number) => {
+    if (mins >= 1440) return 'No Limit';
+    if (mins >= 60) {
+      const hrs = mins / 60;
+      return `${hrs} ${hrs === 1 ? 'Hour' : 'Hours'}`;
+    }
+    return `${mins} Mins`;
+  };
+
   const getStatusBadgeColor = (roomStatus: string) => {
     switch (roomStatus.toUpperCase()) {
       case 'AVAILABLE':
@@ -223,6 +238,7 @@ export const RoomManagement: React.FC = () => {
                 <tr className="bg-slate-50 dark:bg-slate-800/40 border-b dark:border-slate-800 text-xs text-slate-400 font-semibold h-12">
                   <th className="p-4 pl-6">Room Name</th>
                   <th className="p-4">Location</th>
+                  <th className="p-4">Availability & Limits</th>
                   <th className="p-4">Amenities</th>
                   <th className="p-4">Status</th>
                   <th className="p-4 pr-6 text-right">Actions</th>
@@ -239,6 +255,12 @@ export const RoomManagement: React.FC = () => {
                     {/* Location */}
                     <td className="p-4 text-xs text-slate-500 dark:text-slate-400">
                       {room.building} (Floor {room.floor})
+                    </td>
+
+                    {/* Availability & Limits */}
+                    <td className="p-4 text-xs text-slate-600 dark:text-slate-300">
+                      <div className="font-semibold">{formatHour(room.availableStartHour ?? 8)} - {formatHour(room.availableEndHour ?? 18)}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5">Max Limit: {formatDuration(room.maxDuration ?? 120)}</div>
                     </td>
 
                     {/* Amenities */}
