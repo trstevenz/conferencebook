@@ -647,12 +647,12 @@ export const BookingsCalendar: React.FC = () => {
                   return (
                     <div 
                       key={i} 
-                      className={`relative h-full border-r ${
+                      className={`relative h-full ${
                         i === 0 ? 'border-l border-l-slate-300 dark:border-l-slate-700' : ''
                       } ${
                         isHourBoundary 
-                          ? 'border-slate-300 dark:border-slate-700' 
-                          : 'border-slate-200 dark:border-slate-800'
+                          ? 'border-r border-slate-300 dark:border-slate-700' 
+                          : 'border-r border-transparent'
                       }`}
                     >
                       {isHourStart && (
@@ -748,12 +748,12 @@ export const BookingsCalendar: React.FC = () => {
                               ? `${room.name} is unavailable (Available: ${roomStart % 12 || 12} ${roomStart >= 12 ? 'PM' : 'AM'} - ${roomEnd % 12 || 12} ${roomEnd >= 12 ? 'PM' : 'AM'})`
                               : `Drag or click to book starting at ${formatSlotLabel(i)} in ${room.name}`
                             }
-                            className={`flex items-center justify-center transition-all group border-r ${
+                            className={`flex items-center justify-center transition-all group ${
                               i === 0 ? 'border-l border-l-slate-300 dark:border-l-slate-700' : ''
                             } ${
                               isHourBoundary 
-                                ? (isOutsideHours ? 'border-slate-300/80 dark:border-slate-700/80' : 'border-slate-300 dark:border-slate-700')
-                                : (isOutsideHours ? 'border-slate-200/40 dark:border-slate-800/40' : 'border-slate-200 dark:border-slate-800')
+                                ? (isOutsideHours ? 'border-r border-slate-300/80 dark:border-slate-700/80' : 'border-r border-slate-300 dark:border-slate-700')
+                                : 'border-r border-transparent'
                             } ${
                               isOutsideHours
                                 ? 'stripes-bg cursor-not-allowed'
