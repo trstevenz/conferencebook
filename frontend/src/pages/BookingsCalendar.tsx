@@ -21,6 +21,7 @@ interface Room {
   availableStartHour?: number;
   availableEndHour?: number;
   maxDuration?: number;
+  status?: string;
 }
 
 interface User {
@@ -250,8 +251,9 @@ export const BookingsCalendar: React.FC = () => {
   const fetchBaseData = async () => {
     try {
       const roomsData = await apiCall('/api/rooms');
-      setRooms(roomsData);
-      if (roomsData.length > 0) setBookingRoomId(roomsData[0].id);
+      const activeRooms = roomsData.filter((r: any) => r.status !== 'DISABLED');
+      setRooms(activeRooms);
+      if (activeRooms.length > 0) setBookingRoomId(activeRooms[0].id);
 
       const usersData = await apiCall('/api/auth/users');
       setUsersList(usersData.filter((u: any) => u.id !== user?.id)); // exclude self
@@ -591,7 +593,8 @@ export const BookingsCalendar: React.FC = () => {
             <div className="flex bg-slate-50 dark:bg-slate-800/40 text-slate-400 font-semibold text-xs h-12">
               <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex items-center font-outfit">Rooms</div>
               <div className="flex-1" style={{ display: 'grid', gridTemplateColumns: `repeat(${totalSlotsCount}, minmax(20px, 1fr))` }}>
-                {businessHours.slice(0, -1).map(h => {
+                {businessHours.slice(0, -1).map((h, idx, arr) => {
+                  const isLast = idx === arr.length - 1;
                   const startHour = h;
                   const endHour = h + 1;
                   const getLabel = (hour: number) => {
@@ -599,14 +602,14 @@ export const BookingsCalendar: React.FC = () => {
                     if (hour === 12) return '12 PM';
                     return hour > 12 ? `${hour - 12} PM` : `${hour} AM`;
                   };
-                  const label = `${getLabel(startHour)} - ${getLabel(endHour)}`;
                   return (
                     <div
                       key={h}
-                      className="flex items-center justify-center border-r dark:border-slate-800 text-center font-outfit text-[10px] tracking-wider"
+                      className="flex items-center justify-between pl-1.5 pr-1.5 border-r dark:border-slate-800 font-outfit text-[10px] tracking-wider"
                       style={{ gridColumn: `span ${slotsPerHour}` }}
                     >
-                      {label}
+                      <span>{getLabel(startHour)}</span>
+                      {isLast && <span>{getLabel(endHour)}</span>}
                     </div>
                   );
                 })}
