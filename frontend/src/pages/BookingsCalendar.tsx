@@ -6,14 +6,12 @@ import {
   ChevronRight,
   Plus,
   Clock,
-  MapPin,
   Users,
   CheckCircle2,
   XCircle,
-  PlusCircle,
-  HelpCircle,
   Edit,
-  Trash2
+  Trash2,
+  Check
 } from 'lucide-react';
 
 interface Room {
@@ -75,8 +73,20 @@ export const BookingsCalendar: React.FC = () => {
   const [bookingRecurrence, setBookingRecurrence] = useState('');
   const [bookingRecurrenceCount, setBookingRecurrenceCount] = useState<number>(1);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<number[]>([]);
+  const [isRoomLocked, setIsRoomLocked] = useState(false);
 
-  // Hour slots (8 AM to 6 PM)
+  // Edit Booking states
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [editRoomId, setEditRoomId] = useState<number>(0);
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editEndTime, setEditEndTime] = useState('');
+  const [editParticipantIds, setEditParticipantIds] = useState<number[]>([]);
+  const [editRecurrence, setEditRecurrence] = useState('');
+  const [editRecurrenceCount, setEditRecurrenceCount] = useState<number>(1);
+
+  // Business Hours (8 AM to 6 PM)
   const businessHours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
 
   useEffect(() => {
@@ -134,19 +144,38 @@ export const BookingsCalendar: React.FC = () => {
     return `${dStr}T${timeStr}:00`;
   };
 
-  const handleOpenCreateModal = (roomId?: number, hour?: number) => {
+  const handleOpenCreateModal = (roomId?: number, slotIndex?: number) => {
     setErrorMessage(null);
     setBookingTitle('');
     setBookingDesc('');
-    if (roomId) setBookingRoomId(roomId);
     setSelectedParticipantIds([]);
     setBookingRecurrence('');
     setBookingRecurrenceCount(1);
 
-    // Default times
-    const startHour = hour ? hour : 10;
-    const startHourStr = startHour < 10 ? `0${startHour}:00` : `${startHour}:00`;
-    const endHourStr = (startHour + 1) < 10 ? `0${startHour + 1}:00` : `${startHour + 1}:00`;
+    if (roomId) {
+      setBookingRoomId(roomId);
+      setIsRoomLocked(true);
+    } else {
+      if (rooms.length > 0) setBookingRoomId(rooms[0].id);
+      setIsRoomLocked(false);
+    }
+
+    // Default times based on 15-minute slotIndex
+    let startHour = 10;
+    let startMinute = 0;
+    if (slotIndex !== undefined) {
+      startHour = 8 + Math.floor((slotIndex * 15) / 60);
+      startMinute = (slotIndex * 15) % 60;
+    }
+
+    const formatPart = (num: number) => num < 10 ? `0${num}` : `${num}`;
+    const startHourStr = `${formatPart(startHour)}:${formatPart(startMinute)}`;
+    
+    // Default meeting duration is 45 minutes
+    const endMinutesTotal = startHour * 60 + startMinute + 45;
+    const endHour = Math.floor(endMinutesTotal / 60);
+    const endMin = endMinutesTotal % 60;
+    const endHourStr = `${formatPart(endHour)}:${formatPart(endMin)}`;
     
     setBookingStartTime(combineDateAndHour(selectedDate, startHourStr));
     setBookingEndTime(combineDateAndHour(selectedDate, endHourStr));
@@ -185,7 +214,49 @@ export const BookingsCalendar: React.FC = () => {
   const handleOpenDetails = (booking: Booking) => {
     setErrorMessage(null);
     setSelectedBooking(booking);
+    setIsEditing(false);
+
+    // Prefill edit states
+    setEditTitle(booking.title);
+    setEditDesc(booking.description || '');
+    setEditRoomId(booking.room.id);
+    setEditStartTime(booking.startTime.substring(0, 16));
+    setEditEndTime(booking.endTime.substring(0, 16));
+    setEditParticipantIds(booking.participants.map(p => p.id));
+    setEditRecurrence(booking.recurringPattern || '');
+    setEditRecurrenceCount(1);
+
     setIsDetailsModalOpen(true);
+  };
+
+  const handleUpdateBooking = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedBooking) return;
+    setErrorMessage(null);
+
+    const payload = {
+      roomId: editRoomId,
+      userId: selectedBooking.user.id,
+      startTime: editStartTime,
+      endTime: editEndTime,
+      title: editTitle,
+      description: editDesc,
+      participantIds: editParticipantIds,
+      recurrencePattern: editRecurrence || null,
+      recurrenceCount: editRecurrence ? editRecurrenceCount : null
+    };
+
+    try {
+      await apiCall(`/api/bookings/${selectedBooking.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      setIsEditing(false);
+      setIsDetailsModalOpen(false);
+      fetchBookings();
+    } catch (err: any) {
+      setErrorMessage(err.message);
+    }
   };
 
   const handleCancelBooking = async (id: number) => {
@@ -225,21 +296,33 @@ export const BookingsCalendar: React.FC = () => {
     );
   };
 
-  // Helper to find booking overlapping a specific hour slot for a specific room on selectedDate
-  const getBookingForSlot = (roomId: number, hour: number) => {
-    const slotStart = new Date(selectedDate);
-    slotStart.setHours(hour, 0, 0, 0);
+  const toggleEditParticipant = (pId: number) => {
+    setEditParticipantIds(prev =>
+      prev.includes(pId) ? prev.filter(id => id !== pId) : [...prev, pId]
+    );
+  };
 
-    const slotEnd = new Date(selectedDate);
-    slotEnd.setHours(hour + 1, 0, 0, 0);
+  const isBookingOnSelectedDate = (booking: Booking) => {
+    const bStart = new Date(booking.startTime);
+    const bEnd = new Date(booking.endTime);
+    
+    const targetStart = new Date(selectedDate);
+    targetStart.setHours(0, 0, 0, 0);
+    
+    const targetEnd = new Date(selectedDate);
+    targetEnd.setHours(23, 59, 59, 999);
+    
+    return bStart <= targetEnd && bEnd >= targetStart;
+  };
 
-    return bookings.find(b => {
-      if (b.room.id !== roomId) return false;
-      if (b.status === 'CANCELLED' || b.status === 'REJECTED') return false;
-      const bStart = new Date(b.startTime);
-      const bEnd = new Date(b.endTime);
-      return bStart < slotEnd && bEnd > slotStart;
-    });
+  const getSlotIndex = (timeStr: string) => {
+    const date = new Date(timeStr);
+    const hours = date.getHours();
+    const minutes = date.getMinutes();
+    
+    const totalMinutes = (hours - 8) * 60 + minutes;
+    const clamped = Math.max(0, Math.min(600, totalMinutes));
+    return Math.floor(clamped / 15);
   };
 
   return (
@@ -272,15 +355,20 @@ export const BookingsCalendar: React.FC = () => {
       {/* Grid Timeline scheduler */}
       <div className="bg-white dark:bg-slate-900 border dark:border-slate-800 rounded-3xl overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
-          <div className="min-w-[1000px] divide-y dark:divide-slate-800">
+          <div className="min-w-[1200px] divide-y dark:divide-slate-800">
             {/* Timeline Hours Header */}
             <div className="flex bg-slate-50 dark:bg-slate-800/40 text-slate-400 font-semibold text-xs h-12">
               <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex items-center font-outfit">Rooms</div>
-              <div className="flex-1 flex divide-x dark:divide-slate-800">
-                {businessHours.slice(0, -1).map(h => {
+              <div className="flex-1" style={{ display: 'grid', gridTemplateColumns: 'repeat(40, minmax(20px, 1fr))' }}>
+                {Array.from({ length: 10 }).map((_, hourIdx) => {
+                  const h = 8 + hourIdx;
                   const label = h > 12 ? `${h - 12} PM` : h === 12 ? '12 PM' : `${h} AM`;
                   return (
-                    <div key={h} className="flex-1 flex items-center justify-center min-w-[70px]">
+                    <div
+                      key={h}
+                      className="flex items-center justify-center border-r dark:border-slate-800 text-center font-outfit text-[10px] tracking-wider"
+                      style={{ gridColumn: `span 4` }}
+                    >
                       {label}
                     </div>
                   );
@@ -296,56 +384,108 @@ export const BookingsCalendar: React.FC = () => {
             ) : rooms.length === 0 ? (
               <div className="p-10 text-center text-slate-500 text-sm">No rooms found.</div>
             ) : (
-              rooms.map(room => (
-                <div key={room.id} className="flex min-h-[75px]">
-                  {/* Room Detail Panel */}
-                  <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex flex-col justify-center bg-slate-50/50 dark:bg-slate-900/50">
-                    <span className="font-bold text-sm leading-tight">{room.name}</span>
-                    <span className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-wide">
-                      Cap: {room.capacity} seats • Floor {room.floor}
-                    </span>
-                  </div>
+              rooms.map(room => {
+                const roomBookings = bookings.filter(b => 
+                  b.room.id === room.id && 
+                  b.status !== 'CANCELLED' && 
+                  b.status !== 'REJECTED' &&
+                  isBookingOnSelectedDate(b)
+                );
 
-                  {/* Grid Hours cells */}
-                  <div className="flex-1 flex divide-x dark:divide-slate-800 relative">
-                    {businessHours.slice(0, -1).map(h => {
-                      const activeBooking = getBookingForSlot(room.id, h);
-                      
-                      if (activeBooking) {
-                        const isPending = activeBooking.status === 'PENDING';
+                return (
+                  <div key={room.id} className="flex border-b dark:border-slate-800">
+                    {/* Room Detail Panel */}
+                    <div className="w-56 p-4 border-r dark:border-slate-800 flex-shrink-0 flex flex-col justify-center bg-slate-50/50 dark:bg-slate-900/50">
+                      <span className="font-bold text-sm leading-tight">{room.name}</span>
+                      <span className="text-[10px] text-slate-400 font-medium mt-1 uppercase tracking-wide">
+                        Cap: {room.capacity} seats • Floor {room.floor}
+                      </span>
+                    </div>
+
+                    {/* Grid Hours cells */}
+                    <div className="flex-1 relative" style={{ display: 'grid', gridTemplateColumns: 'repeat(40, minmax(20px, 1fr))', gridAutoRows: 'minmax(80px, auto)' }}>
+                      {/* Render background cells (40 slots) */}
+                      {Array.from({ length: 40 }).map((_, i) => {
+                        const cellHour = 8 + Math.floor((i * 15) / 60);
+                        const cellMinute = (i * 15) % 60;
+                        const cellTimeLabel = `${cellHour > 12 ? cellHour - 12 : cellHour}:${cellMinute === 0 ? '00' : cellMinute} ${cellHour >= 12 ? 'PM' : 'AM'}`;
+                        
                         return (
                           <div
-                            key={h}
-                            onClick={() => handleOpenDetails(activeBooking)}
-                            className="flex-1 min-w-[70px] p-1 flex items-center justify-center cursor-pointer transition-all"
+                            key={i}
+                            onClick={() => handleOpenCreateModal(room.id, i)}
+                            title={`Book slot at ${cellTimeLabel} in ${room.name}`}
+                            className="border-r border-slate-100 dark:border-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/10 cursor-pointer flex items-center justify-center transition-all group"
+                            style={{ gridColumn: i + 1, gridRow: 1 }}
                           >
-                            <div className={`w-full h-full rounded-xl px-2 py-1.5 text-left flex flex-col justify-between border select-none transition-all hover:scale-[1.02] ${
+                            <Plus className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        );
+                      })}
+
+                      {/* Render actual bookings */}
+                      {roomBookings.map(b => {
+                        const startCol = getSlotIndex(b.startTime) + 1;
+                        const endCol = getSlotIndex(b.endTime) + 1;
+                        
+                        // Ensure it spans at least 1 column
+                        const span = Math.max(1, endCol - startCol);
+                        
+                        const isPending = b.status === 'PENDING';
+                        
+                        // Time formatting helper
+                        const formatTime = (isoStr: string) => {
+                          const date = new Date(isoStr);
+                          let h = date.getHours();
+                          const m = date.getMinutes();
+                          const ampm = h >= 12 ? 'PM' : 'AM';
+                          h = h % 12;
+                          h = h ? h : 12;
+                          const mStr = m < 10 ? '0' + m : m;
+                          return `${h}:${mStr} ${ampm}`;
+                        };
+                        
+                        const formattedStart = formatTime(b.startTime);
+                        const formattedEnd = formatTime(b.endTime);
+                        
+                        return (
+                          <div
+                            key={b.id}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenDetails(b);
+                            }}
+                            className="p-1 cursor-pointer transition-all h-[calc(100%-8px)] my-auto"
+                            style={{
+                              gridColumnStart: startCol,
+                              gridColumnEnd: endCol,
+                              gridRow: 1,
+                              zIndex: 10
+                            }}
+                          >
+                            <div className={`w-full h-full rounded-xl p-2 text-left flex flex-col justify-between border select-none transition-all hover:scale-[1.01] hover:shadow-md ${
                               isPending
                                 ? 'bg-amber-500/10 text-amber-600 border-amber-500/20 dark:text-amber-400'
                                 : 'bg-primary-500/10 text-primary-600 border-primary-500/20 dark:text-primary-400'
                             }`}>
-                              <span className="font-bold text-[10px] truncate leading-none">{activeBooking.title}</span>
-                              <span className="text-[9px] text-slate-500 dark:text-slate-400 truncate leading-none mt-1">
-                                {activeBooking.user.fullName}
-                              </span>
+                              <span className="font-bold text-[10px] truncate leading-none mb-1">{b.title}</span>
+                              <div className="flex flex-col gap-0.5 mt-auto">
+                                <span className="text-[9px] text-slate-500 dark:text-slate-400 truncate leading-none">
+                                  {b.user.fullName}
+                                </span>
+                                {/* Requirement 3: Start and End Time Displayed on Card */}
+                                <span className="text-[8px] font-semibold text-primary-600 dark:text-primary-300 tracking-wider">
+                                  {formattedStart} - {formattedEnd}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         );
-                      }
-
-                      return (
-                        <div
-                          key={h}
-                          onClick={() => handleOpenCreateModal(room.id, h)}
-                          className="flex-1 min-w-[70px] hover:bg-slate-50 dark:hover:bg-slate-800/20 cursor-pointer flex items-center justify-center transition-all group"
-                        >
-                          <PlusCircle className="h-4 w-4 text-slate-300 dark:text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </div>
-                      );
-                    })}
+                      })}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -391,12 +531,14 @@ export const BookingsCalendar: React.FC = () => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Conference Room</label>
+                  {/* Requirement 4: Room select is disabled/locked if user clicked a specific room cell */}
                   <select
                     value={bookingRoomId}
                     onChange={e => setBookingRoomId(Number(e.target.value))}
+                    disabled={isRoomLocked}
                     className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
                       theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
-                    }`}
+                    } ${isRoomLocked ? 'opacity-70 cursor-not-allowed bg-slate-100 dark:bg-slate-800' : ''}`}
                   >
                     {rooms.map(r => (
                       <option key={r.id} value={r.id}>{r.name} (Cap: {r.capacity})</option>
@@ -426,6 +568,7 @@ export const BookingsCalendar: React.FC = () => {
                   <input
                     type="datetime-local"
                     required
+                    step="900" // Requirement 2: every 15 mins step
                     value={bookingStartTime}
                     onChange={e => setBookingStartTime(e.target.value)}
                     className={`w-full rounded-2xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
@@ -438,6 +581,7 @@ export const BookingsCalendar: React.FC = () => {
                   <input
                     type="datetime-local"
                     required
+                    step="900" // Requirement 2: every 15 mins step
                     value={bookingEndTime}
                     onChange={e => setBookingEndTime(e.target.value)}
                     className={`w-full rounded-2xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
@@ -522,12 +666,20 @@ export const BookingsCalendar: React.FC = () => {
       {/* BOOKING DETAILS & ACTION MODAL */}
       {isDetailsModalOpen && selectedBooking && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-6 z-50 animate-fadeIn">
-          <div className={`w-full max-w-md rounded-3xl shadow-2xl p-8 border ${
+          <div className={`w-full max-w-lg rounded-3xl shadow-2xl p-8 border ${
             theme === 'dark' ? 'bg-[#1e293b] border-slate-700' : 'bg-white border-slate-200'
           }`}>
             <div className="flex justify-between items-center mb-6">
-              <h4 className="text-lg font-bold font-outfit">Meeting Reservation Details</h4>
-              <button onClick={() => setIsDetailsModalOpen(false)} className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+              <h4 className="text-lg font-bold font-outfit">
+                {isEditing ? 'Edit Meeting Reservation' : 'Meeting Reservation Details'}
+              </h4>
+              <button
+                onClick={() => {
+                  setIsDetailsModalOpen(false);
+                  setIsEditing(false);
+                }}
+                className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800"
+              >
                 <XCircle className="h-5 w-5 text-slate-400" />
               </button>
             </div>
@@ -539,101 +691,274 @@ export const BookingsCalendar: React.FC = () => {
               </div>
             )}
 
-            <div className="space-y-5">
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase block">Meeting Title</span>
-                <p className="font-bold text-base mt-1">{selectedBooking.title}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+            {isEditing ? (
+              // EDIT MODE FORM (Requirement 5: Modify booking anytime)
+              <form onSubmit={handleUpdateBooking} className="space-y-4">
+                {/* Title */}
                 <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Room</span>
-                  <p className="text-sm font-semibold mt-0.5">{selectedBooking.room.name}</p>
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Meeting Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={editTitle}
+                    onChange={e => setEditTitle(e.target.value)}
+                    className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                      theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                    }`}
+                  />
                 </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Organizer</span>
-                  <p className="text-sm font-semibold mt-0.5">{selectedBooking.user.fullName}</p>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">Start Time</span>
-                  <p className="text-xs font-medium mt-0.5">{new Date(selectedBooking.startTime).toLocaleString()}</p>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-400 font-semibold uppercase block">End Time</span>
-                  <p className="text-xs font-medium mt-0.5">{new Date(selectedBooking.endTime).toLocaleString()}</p>
-                </div>
-              </div>
-
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-1">Status</span>
-                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border inline-block ${
-                  selectedBooking.status === 'APPROVED'
-                    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
-                    : selectedBooking.status === 'PENDING'
-                    ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
-                    : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
-                }`}>
-                  {selectedBooking.status}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase block">Agenda</span>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
-                  {selectedBooking.description || 'No agenda detailed.'}
-                </p>
-              </div>
-
-              {/* Participants */}
-              <div>
-                <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-2">Participants ({selectedBooking.participants.length})</span>
-                {selectedBooking.participants.length === 0 ? (
-                  <p className="text-xs text-slate-500">None invited.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-1.5">
-                    {selectedBooking.participants.map(p => (
-                      <span key={p.id} className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-medium text-slate-600 dark:text-slate-400">
-                        {p.fullName}
-                      </span>
-                    ))}
+                {/* Room Select */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Conference Room</label>
+                    <select
+                      value={editRoomId}
+                      onChange={e => setEditRoomId(Number(e.target.value))}
+                      className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                        theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      {rooms.map(r => (
+                        <option key={r.id} value={r.id}>{r.name} (Cap: {r.capacity})</option>
+                      ))}
+                    </select>
                   </div>
-                )}
-              </div>
+                  <div>
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Recurrence Pattern</label>
+                    <select
+                      value={editRecurrence}
+                      onChange={e => setEditRecurrence(e.target.value)}
+                      className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                        theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      <option value="">None (One-Time)</option>
+                      <option value="DAILY">Daily</option>
+                      <option value="WEEKLY">Weekly</option>
+                    </select>
+                  </div>
+                </div>
 
-              {/* Action Buttons depending on role & owner */}
-              <div className="pt-4 flex flex-col gap-2">
-                {/* Employee / Organizer Cancel Option */}
-                {(selectedBooking.user.id === user?.id || user?.role === 'SUPER_ADMIN') && (
+                {/* Time range */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="col-span-1">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Start Date/Time</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      step="900" // Enforce 15 mins step
+                      value={editStartTime}
+                      onChange={e => setEditStartTime(e.target.value)}
+                      className={`w-full rounded-2xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                        theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                      }`}
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">End Date/Time</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      step="900" // Enforce 15 mins step
+                      value={editEndTime}
+                      onChange={e => setEditEndTime(e.target.value)}
+                      className={`w-full rounded-2xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                        theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                      }`}
+                    />
+                  </div>
+                  <div className="col-span-1">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Occurrences</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      disabled={!editRecurrence}
+                      value={editRecurrenceCount}
+                      onChange={e => setEditRecurrenceCount(Number(e.target.value))}
+                      className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                        theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                      }`}
+                    />
+                  </div>
+                </div>
+
+                {/* Participants */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Select Participants</label>
+                  <div className={`max-h-24 overflow-y-auto border p-3 rounded-2xl space-y-2 ${
+                    theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700' : 'bg-slate-50 border-slate-200'
+                  }`}>
+                    {usersList.length === 0 ? (
+                      <p className="text-xs text-slate-400">No other employees available.</p>
+                    ) : (
+                      usersList.map(u => (
+                        <label key={u.id} className="flex items-center gap-2 cursor-pointer select-none text-xs">
+                          <input
+                            type="checkbox"
+                            checked={editParticipantIds.includes(u.id)}
+                            onChange={() => toggleEditParticipant(u.id)}
+                            className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                          />
+                          <span>{u.fullName} ({u.username})</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Meeting Notes / Agenda</label>
+                  <textarea
+                    value={editDesc}
+                    onChange={e => setEditDesc(e.target.value)}
+                    rows={2}
+                    className={`w-full rounded-2xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 border ${
+                      theme === 'dark' ? 'bg-[#1e293b]/40 border-slate-700 text-white' : 'bg-white border-slate-200'
+                    }`}
+                  />
+                </div>
+
+                <div className="flex gap-4 pt-3">
                   <button
-                    onClick={() => handleCancelBooking(selectedBooking.id)}
-                    className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-md transition-all flex items-center justify-center gap-1.5"
+                    type="button"
+                    onClick={() => setIsEditing(false)}
+                    className="flex-1 py-3 border dark:border-slate-700 rounded-2xl text-xs font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-all text-center"
                   >
-                    <Trash2 className="h-4 w-4" /> Cancel Booking
+                    Back to Details
                   </button>
-                )}
+                  <button
+                    type="submit"
+                    className="flex-1 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl text-xs font-semibold shadow-lg shadow-primary-500/25 text-center"
+                  >
+                    Save Changes
+                  </button>
+                </div>
+              </form>
+            ) : (
+              // READ-ONLY DETAIL MODE
+              <div className="space-y-5">
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block font-outfit">Meeting Title</span>
+                  <p className="font-bold text-base mt-1 text-slate-800 dark:text-white">{selectedBooking.title}</p>
+                </div>
 
-                {/* Manager Overrides (Approve / Reject) */}
-                {selectedBooking.status === 'PENDING' && (user?.role === 'MANAGER' || user?.role === 'SUPER_ADMIN') && (
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => handleRejectBooking(selectedBooking.id)}
-                      className="flex-1 py-2.5 border border-rose-500 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl text-xs font-semibold transition-all"
-                    >
-                      Reject Request
-                    </button>
-                    <button
-                      onClick={() => handleApproveBooking(selectedBooking.id)}
-                      className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all"
-                    >
-                      Approve Booking
-                    </button>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase block font-outfit font-medium">Room</span>
+                    <p className="text-sm font-semibold mt-0.5 text-slate-700 dark:text-slate-300">{selectedBooking.room.name}</p>
                   </div>
-                )}
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase block font-outfit font-medium">Organizer</span>
+                    <p className="text-sm font-semibold mt-0.5 text-slate-700 dark:text-slate-300">{selectedBooking.user.fullName}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase block font-outfit font-medium">Start Time</span>
+                    <p className="text-xs font-medium mt-0.5 text-slate-600 dark:text-slate-400">
+                      {new Date(selectedBooking.startTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase block font-outfit font-medium">End Time</span>
+                    <p className="text-xs font-medium mt-0.5 text-slate-600 dark:text-slate-400">
+                      {new Date(selectedBooking.endTime).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-1 font-outfit font-medium">Status</span>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border inline-block ${
+                      selectedBooking.status === 'APPROVED'
+                        ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                        : selectedBooking.status === 'PENDING'
+                        ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                        : 'bg-rose-500/10 text-rose-600 border-rose-500/20'
+                    }`}>
+                      {selectedBooking.status}
+                    </span>
+                  </div>
+                  {selectedBooking.recurringPattern && (
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-1 font-outfit font-medium">Recurrence</span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold border inline-block bg-indigo-500/10 text-indigo-600 border-indigo-500/20">
+                        {selectedBooking.recurringPattern}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block font-outfit font-medium">Agenda</span>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed bg-slate-50/50 dark:bg-slate-800/20 p-3 rounded-xl border dark:border-slate-800">
+                    {selectedBooking.description || 'No agenda detailed.'}
+                  </p>
+                </div>
+
+                {/* Participants */}
+                <div>
+                  <span className="text-[10px] text-slate-400 font-semibold uppercase block mb-2 font-outfit font-medium">Participants ({selectedBooking.participants.length})</span>
+                  {selectedBooking.participants.length === 0 ? (
+                    <p className="text-xs text-slate-500">None invited.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedBooking.participants.map(p => (
+                        <span key={p.id} className="px-2.5 py-1 rounded bg-slate-100 dark:bg-slate-800 text-[10px] font-semibold text-slate-600 dark:text-slate-400">
+                          {p.fullName}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Action Buttons depending on role & owner */}
+                <div className="pt-4 flex flex-col gap-2">
+                  {/* Edit Option for creator or Super Admin */}
+                  {(selectedBooking.user.id === user?.id || user?.role === 'SUPER_ADMIN') && (
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="w-full py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl text-xs font-semibold shadow-md transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Edit className="h-4 w-4" /> Edit Reservation
+                    </button>
+                  )}
+
+                  {/* Employee / Organizer Cancel Option */}
+                  {(selectedBooking.user.id === user?.id || user?.role === 'SUPER_ADMIN') && (
+                    <button
+                      onClick={() => handleCancelBooking(selectedBooking.id)}
+                      className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-semibold shadow-md transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Trash2 className="h-4 w-4" /> Cancel Booking
+                    </button>
+                  )}
+
+                  {/* Manager Overrides (Approve / Reject) */}
+                  {selectedBooking.status === 'PENDING' && (user?.role === 'MANAGER' || user?.role === 'SUPER_ADMIN') && (
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => handleRejectBooking(selectedBooking.id)}
+                        className="flex-1 py-2.5 border border-rose-500 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-xl text-xs font-semibold transition-all"
+                      >
+                        Reject Request
+                      </button>
+                      <button
+                        onClick={() => handleApproveBooking(selectedBooking.id)}
+                        className="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold transition-all"
+                      >
+                        Approve Booking
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
