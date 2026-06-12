@@ -97,6 +97,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('theme', theme);
   }, [theme]);
 
+  // Synchronize authentication state across browser tabs
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token') {
+        setToken(e.newValue);
+      }
+      if (e.key === 'user') {
+        setUser(e.newValue ? JSON.parse(e.newValue) : null);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
   const toggleTheme = () => {
     setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
@@ -118,8 +132,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const apiCall = async (path: string, options: RequestInit = {}) => {
     const headers = new Headers(options.headers || {});
-    if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
+    const currentToken = localStorage.getItem('token');
+    if (currentToken) {
+      headers.set('Authorization', `Bearer ${currentToken}`);
     }
     if (!(options.body instanceof FormData) && !headers.has('Content-Type')) {
       headers.set('Content-Type', 'application/json');
