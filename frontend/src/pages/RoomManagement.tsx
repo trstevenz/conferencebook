@@ -142,7 +142,7 @@ export const RoomManagement: React.FC = () => {
     setEditingRoomId(room.id);
     setName(room.name);
     setCode(room.code);
-    setBuilding(room.building);
+    setBuilding(room.building || '');
     setFloor(room.floor);
     setCapacity(room.capacity);
     setDescription(room.description);
@@ -469,6 +469,12 @@ export const RoomManagement: React.FC = () => {
             </h4>
 
             <form onSubmit={handleSaveRoom} className="space-y-4">
+              {errorMessage && (
+                <div className="p-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/40 text-rose-600 dark:text-rose-400 rounded-2xl text-xs flex items-center gap-2.5">
+                  <ShieldAlert className="h-4.5 w-4.5" />
+                  <span>{errorMessage}</span>
+                </div>
+              )}
               <div>
                 <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 block mb-2">Room Name</label>
                 <input
