@@ -86,6 +86,12 @@ export const BookingsCalendar: React.FC = () => {
   const [editRecurrence, setEditRecurrence] = useState('');
   const [editRecurrenceCount, setEditRecurrenceCount] = useState<number>(1);
 
+  // Drag selection states
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartSlot, setDragStartSlot] = useState<number | null>(null);
+  const [dragEndSlot, setDragEndSlot] = useState<number | null>(null);
+  const [dragRoomId, setDragRoomId] = useState<number | null>(null);
+
   // Business Hours (8 AM to 6 PM)
   const businessHours = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18];
 
@@ -96,6 +102,29 @@ export const BookingsCalendar: React.FC = () => {
   useEffect(() => {
     fetchBookings();
   }, [selectedDate]);
+
+  useEffect(() => {
+    const handleGlobalMouseUp = () => {
+      if (isDragging) {
+        setIsDragging(false);
+        if (dragStartSlot !== null && dragEndSlot !== null && dragRoomId !== null) {
+          const start = Math.min(dragStartSlot, dragEndSlot);
+          const end = Math.max(dragStartSlot, dragEndSlot) + 1;
+          handleOpenCreateModal(dragRoomId, start, end);
+        }
+        setDragStartSlot(null);
+        setDragEndSlot(null);
+        setDragRoomId(null);
+      }
+    };
+
+    if (isDragging) {
+      window.addEventListener('mouseup', handleGlobalMouseUp);
+    }
+    return () => {
+      window.removeEventListener('mouseup', handleGlobalMouseUp);
+    };
+  }, [isDragging, dragStartSlot, dragEndSlot, dragRoomId]);
 
   const fetchBaseData = async () => {
     try {
@@ -144,7 +173,7 @@ export const BookingsCalendar: React.FC = () => {
     return `${dStr}T${timeStr}:00`;
   };
 
-  const handleOpenCreateModal = (roomId?: number, slotIndex?: number) => {
+  const handleOpenCreateModal = (roomId?: number, startSlotIndex?: number, endSlotIndex?: number) => {
     setErrorMessage(null);
     setBookingTitle('');
     setBookingDesc('');
@@ -160,22 +189,30 @@ export const BookingsCalendar: React.FC = () => {
       setIsRoomLocked(false);
     }
 
-    // Default times based on 15-minute slotIndex
+    // Default times based on 15-minute startSlotIndex
     let startHour = 10;
     let startMinute = 0;
-    if (slotIndex !== undefined) {
-      startHour = 8 + Math.floor((slotIndex * 15) / 60);
-      startMinute = (slotIndex * 15) % 60;
+    if (startSlotIndex !== undefined) {
+      startHour = 8 + Math.floor((startSlotIndex * 15) / 60);
+      startMinute = (startSlotIndex * 15) % 60;
+    }
+
+    // Default times based on 15-minute endSlotIndex
+    let endHour = 11;
+    let endMinute = 0;
+    if (endSlotIndex !== undefined) {
+      endHour = 8 + Math.floor((endSlotIndex * 15) / 60);
+      endMinute = (endSlotIndex * 15) % 60;
+    } else {
+      // Default meeting duration is 45 minutes
+      const endMinutesTotal = startHour * 60 + startMinute + 45;
+      endHour = Math.floor(endMinutesTotal / 60);
+      endMinute = endMinutesTotal % 60;
     }
 
     const formatPart = (num: number) => num < 10 ? `0${num}` : `${num}`;
     const startHourStr = `${formatPart(startHour)}:${formatPart(startMinute)}`;
-    
-    // Default meeting duration is 45 minutes
-    const endMinutesTotal = startHour * 60 + startMinute + 45;
-    const endHour = Math.floor(endMinutesTotal / 60);
-    const endMin = endMinutesTotal % 60;
-    const endHourStr = `${formatPart(endHour)}:${formatPart(endMin)}`;
+    const endHourStr = `${formatPart(endHour)}:${formatPart(endMinute)}`;
     
     setBookingStartTime(combineDateAndHour(selectedDate, startHourStr));
     setBookingEndTime(combineDateAndHour(selectedDate, endHourStr));
@@ -410,20 +447,45 @@ export const BookingsCalendar: React.FC = () => {
                         const cellMinute = (i * 15) % 60;
                         const cellTimeLabel = `${cellHour > 12 ? cellHour - 12 : cellHour}:${cellMinute === 0 ? '00' : cellMinute} ${cellHour >= 12 ? 'PM' : 'AM'}`;
                         
+                        const isSelected = isDragging &&
+                          dragRoomId === room.id &&
+                          dragStartSlot !== null &&
+                          dragEndSlot !== null &&
+                          i >= Math.min(dragStartSlot, dragEndSlot) &&
+                          i <= Math.max(dragStartSlot, dragEndSlot);
+
                         return (
                           <div
                             key={i}
-                            onClick={() => handleOpenCreateModal(room.id, i)}
-                            title={`Book slot at ${cellTimeLabel} in ${room.name}`}
-                            className="border-r border-slate-100 dark:border-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800/10 cursor-pointer flex items-center justify-center transition-all group"
+                            onMouseDown={(e) => {
+                              if (e.button === 0 || e.button === 2) {
+                                e.preventDefault();
+                                setDragStartSlot(i);
+                                setDragEndSlot(i);
+                                setDragRoomId(room.id);
+                                setIsDragging(true);
+                              }
+                            }}
+                            onMouseEnter={() => {
+                              if (isDragging && dragRoomId === room.id) {
+                                setDragEndSlot(i);
+                              }
+                            }}
+                            onContextMenu={(e) => {
+                              e.preventDefault();
+                            }}
+                            title={`Drag or click to book starting at ${cellTimeLabel} in ${room.name}`}
+                            className={`border-r border-slate-100 dark:border-slate-800/40 cursor-pointer flex items-center justify-center transition-all group ${
+                              isSelected
+                                ? 'bg-primary-500/35 dark:bg-primary-600/40 border-y border-primary-500/50'
+                                : 'hover:bg-slate-100 dark:hover:bg-slate-800/10'
+                            }`}
                             style={{ gridColumn: i + 1, gridRow: 1 }}
                           >
                             <Plus className="h-3.5 w-3.5 text-slate-300 dark:text-slate-700 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </div>
                         );
-                      })}
-
-                      {/* Render actual bookings */}
+                      })}                      {/* Render actual bookings */}
                       {roomBookings.map(b => {
                         const startCol = getSlotIndex(b.startTime) + 1;
                         const endCol = getSlotIndex(b.endTime) + 1;
