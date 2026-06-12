@@ -90,6 +90,7 @@ To facilitate testing of role-based portals, the database is auto-seeded with fo
 | **Facility Admin** | `admin` | `password123` | Room creation/modification, amenity listings, maintenance block calendar scheduler. |
 | **Manager** | `manager` | `password123` | All employee permissions, team reservations calendar, override pending approval bookings. |
 | **Employee** | `employee` | `password123` | Search rooms by capacity/amenities, schedule bookings, cancel/edit own bookings, AI Chat. |
+| **Super User** | `superuser` | `password123` | Restricted vertical calendar room booking view with AI assistant. Only sees the booking screen, can only manage own bookings. |
 
 ---
 
@@ -120,3 +121,12 @@ To facilitate testing of role-based portals, the database is auto-seeded with fo
 *   Click **Bookings Calendar** to view a visual time-block grid.
 *   Rooms are listed vertically, and hours (8 AM - 6 PM) are horizontal.
 *   Click on any empty cell to automatically launch the scheduling modal pre-filled with that room and hour!
+
+### 5. Super User Vertical Booking View
+*   **Vertical Grid System**: The **Super User** role (`superuser` / `password123`) is restricted to a full-screen vertical calendar layout (Rooms as columns, 15-minute time slots as rows) with sticky headers for effortless scrolling.
+*   **Opaque and Centered Cards**: Booking cards are rendered as fully solid (opaque) orange slots so grid lines do not show through. The details are centered with larger typography.
+*   **Responsive Height Card Layouts**:
+    *   *15-minute slots (1 slot)*: Display in a horizontal single-line row (Title and Time) to prevent clipping.
+    *   *30-minute slots (2 slots)*: Display in a compact vertical block showing the Title and `Organizer | Time` side-by-side.
+    *   *45+ minute slots (3+ slots)*: Display in a spacious vertical block with large text sizes.
+*   **AI Chatbot Suggested Questions**: Clickable suggested action buttons (📅 Book a room, 🔍 Check Availability, ℹ️ Help) are available inside the AI chat drawer to automatically trigger prompt queries.
